@@ -1,10 +1,8 @@
 <template>
   <div class="layout-container">
     <Sidebar :collapsed="sidebarCollapsed" @toggle-sidebar="sidebarCollapsed = !sidebarCollapsed" />
-    
-    <div class="main-content">
+    <div class="main-content overflow-auto"> <!-- Ajouté overflow-auto pour le scroll -->
       <Header />
-      
       <main class="p-6">
         <BaseTable
           :data="subjectsStore.subjects"
@@ -17,38 +15,40 @@
               Nouvelle Matière
             </button>
           </template>
-          
           <template #cell-coefficient="{ value }">
             <span class="bg-primary-100 text-primary-800 px-2 py-1 rounded-full text-sm font-medium">
               Coeff. {{ value }}
             </span>
           </template>
-          
           <template #cell-category="{ value }">
             <span :class="getCategoryClass(value)" class="px-2 py-1 rounded-full text-sm font-medium">
               {{ value }}
             </span>
           </template>
-          
+          <template #cell-classes="{ item }">
+            <div class="flex flex-wrap gap-1">
+              <span
+                v-for="className in getClassNames(item.classes)"
+                :key="className"
+                class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs"
+              >
+                {{ className }}
+              </span>
+            </div>
+          </template>
           <template #row-actions="{ item }">
             <div class="flex gap-2">
-              <button
-                @click="editSubject(item)"
-                class="text-primary-600 hover:text-primary-900 transition-colors"
-              >
+              <button @click="editSubject(item)" class="text-primary-600 hover:text-primary-900 transition-colors">
                 <i class="fas fa-edit"></i>
               </button>
-              <button
-                @click="deleteSubject(item)"
-                class="text-danger-600 hover:text-danger-900 transition-colors"
-              >
+              <button @click="deleteSubject(item)" class="text-danger-600 hover:text-danger-900 transition-colors">
                 <i class="fas fa-trash"></i>
               </button>
             </div>
           </template>
         </BaseTable>
 
-        <!-- Add/Edit Modal -->
+        <!-- Modal Ajout/Édition -->
         <BaseModal
           :show="showAddModal || showEditModal"
           :title="editingSubject ? 'Modifier la Matière' : 'Nouvelle Matière'"
@@ -67,7 +67,6 @@
                 placeholder="Ex: Mathématiques"
               >
             </div>
-            
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Coefficient</label>
@@ -93,6 +92,24 @@
                   <option value="Arts">Arts</option>
                 </select>
               </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Classes concernées</label>
+                <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3">
+                  <label
+                    v-for="classe in classesStore.classes"
+                    :key="classe.id"
+                    class="flex items-center space-x-2"
+                  >
+                    <input
+                      type="checkbox"
+                      :value="classe.id"
+                      v-model="subjectForm.classes"
+                      class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    >
+                    <span class="text-sm">{{ classe.name }}</span>
+                  </label>
+                </div>
+              </div>
             </div>
           </form>
         </BaseModal>
@@ -109,10 +126,12 @@ import BaseTable from '@/components/common/BaseTable.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { useSubjectsStore } from '@/stores/subjects'
 import { useAuthStore } from '@/stores/auth'
+import {useClassesStore} from '@/stores/classes'
 
 const sidebarCollapsed = ref(false)
 const subjectsStore = useSubjectsStore()
 const authStore = useAuthStore()
+const classesStore = useClassesStore()
 
 const showAddModal = ref(false)
 const showEditModal = ref(false)
@@ -120,20 +139,30 @@ const loading = ref(false)
 const editingSubject = ref(null)
 
 const subjectForm = ref({
-  name: '',
+   name: '',
   coefficient: 1,
-  category: ''
+  category: '',
+  classes: []
 })
 
-onMounted(() => {
-  authStore.initAuth()
+onMounted(async () => {
+  await authStore.initAuth()
+  await subjectsStore.fetchSubjects()
 })
 
 const columns = [
   { key: 'name', label: 'Nom' },
   { key: 'coefficient', label: 'Coefficient' },
-  { key: 'category', label: 'Catégorie' }
+  { key: 'category', label: 'Catégorie' },
+  { key: 'classes', label: 'Classes' }
 ]
+
+function getClassNames(classIds) {
+  if (!classIds || !Array.isArray(classIds)) return []
+  return classIds
+    .map(id => classesStore.classes.find(c => c.id === id)?.name)
+    .filter(Boolean)
+}
 
 function getCategoryClass(category) {
   const classes = {
@@ -153,9 +182,9 @@ function editSubject(subject) {
   showEditModal.value = true
 }
 
-function deleteSubject(subject) {
+async function deleteSubject(subject) {
   if (confirm(`Êtes-vous sûr de vouloir supprimer la matière ${subject.name} ?`)) {
-    subjectsStore.deleteSubject(subject.id)
+    await subjectsStore.deleteSubject(subject.id)
   }
 }
 
@@ -170,18 +199,18 @@ function resetForm() {
   subjectForm.value = {
     name: '',
     coefficient: 1,
-    category: ''
+    category: '',
+    classes: []
   }
 }
 
 async function saveSubject() {
   loading.value = true
-  
   try {
     if (editingSubject.value) {
-      subjectsStore.updateSubject(editingSubject.value.id, { ...subjectForm.value })
+      await subjectsStore.updateSubject(editingSubject.value.id, { ...subjectForm.value })
     } else {
-      subjectsStore.addSubject({ ...subjectForm.value })
+      await subjectsStore.addSubject({ ...subjectForm.value })
     }
     closeModal()
   } catch (error) {
@@ -198,6 +227,6 @@ async function saveSubject() {
 }
 
 .main-content {
-  @apply flex-1 flex flex-col overflow-hidden;
+  @apply flex-1 flex flex-col overflow-auto;
 }
 </style>

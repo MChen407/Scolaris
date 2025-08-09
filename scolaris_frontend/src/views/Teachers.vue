@@ -97,6 +97,18 @@
                   placeholder="Numéro de téléphone"
                 >
               </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Charge horaire (heures/semaine)</label>
+                <input
+                  v-model.number="teacherForm.weeklyHours"
+                  type="number"
+                  required
+                  min="0"
+                  max="40"
+                  class="input-field"
+                  placeholder="Nombre d'heures par semaine"
+                >
+              </div>
             </div>
             
             <div>
@@ -166,12 +178,13 @@ const loading = ref(false)
 const editingTeacher = ref(null)
 
 const teacherForm = ref({
-  firstName: '',
+ firstName: '',
   lastName: '',
   email: '',
   phone: '',
   subjects: [],
-  classes: []
+  classes: [],
+  weeklyHours: 0
 })
 
 onMounted(() => {
@@ -183,6 +196,7 @@ const columns = [
   { key: 'lastName', label: 'Nom' },
   { key: 'email', label: 'Email' },
   { key: 'phone', label: 'Téléphone' },
+  { key: 'weeklyHours', label: 'Heures/semaine' },
   { key: 'subjectNames', label: 'Matières' },
   { key: 'classNames', label: 'Classes' }
 ]
@@ -227,7 +241,8 @@ function resetForm() {
     email: '',
     phone: '',
     subjects: [],
-    classes: []
+    classes: [],
+    weeklyHours: 0
   }
 }
 

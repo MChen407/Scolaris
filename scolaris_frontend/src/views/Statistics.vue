@@ -5,7 +5,7 @@
     <div class="main-content">
       <Header />
       
-      <main class="p-6 space-y-6">
+      <main class="p-6 space-y-6 overflow-y-auto max-h-screen">
         <!-- Key Metrics -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div class="stat-card">
@@ -113,80 +113,145 @@
           </div>
         </div>
 
-        <!-- Detailed Statistics -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <!-- Gender Distribution -->
+        <!-- Performance Statistics -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Top 3 Students by Class -->
           <div class="card">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Répartition par Sexe</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Top 3 Élèves par Classe</h3>
             <div class="space-y-4">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                  <div class="w-4 h-4 bg-blue-500 rounded mr-3"></div>
-                  <span class="text-sm font-medium text-gray-900">Masculin</span>
+              <div v-for="classTop in top3StudentsByClass" :key="classTop.classId" class="border-l-4 border-blue-500 pl-4">
+                <h4 class="font-medium text-gray-900 mb-2">{{ classTop.className }}</h4>
+                <div class="space-y-2">
+                  <div v-for="(student, index) in classTop.students" :key="student.id" class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" :class="getRankClass(index)">
+                        {{ index + 1 }}
+                      </span>
+                      <span class="text-sm font-medium">{{ student.name }}</span>
+                    </div>
+                    <span class="text-sm font-bold text-blue-600">{{ student.average.toFixed(1) }}/20</span>
+                  </div>
                 </div>
-                <span class="text-sm text-gray-600">{{ maleStudents }} ({{ ((maleStudents / totalStudents) * 100).toFixed(1) }}%)</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                  <div class="w-4 h-4 bg-pink-500 rounded mr-3"></div>
-                  <span class="text-sm font-medium text-gray-900">Féminin</span>
-                </div>
-                <span class="text-sm text-gray-600">{{ femaleStudents }} ({{ ((femaleStudents / totalStudents) * 100).toFixed(1) }}%)</span>
               </div>
             </div>
           </div>
 
-          <!-- Financial Overview -->
+          <!-- Performance by Subject -->
           <div class="card">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Aperçu Financier</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Performance par Matière</h3>
             <div class="space-y-3">
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Revenus totaux</span>
-                <span class="font-medium text-success-600">{{ formatCurrency(totalRevenue) }}</span>
+              <div v-for="subject in subjectPerformance" :key="subject.id" class="flex items-center justify-between">
+                <div class="flex-1">
+                  <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm font-medium text-gray-900">{{ subject.name }}</span>
+                    <span class="text-sm font-bold" :class="getPerformanceClass(subject.average)">{{ subject.average.toFixed(1) }}/20</span>
+                  </div>
+                  <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="h-2 rounded-full transition-all duration-300" :class="getPerformanceBarClass(subject.average)" :style="{ width: `${(subject.average / 20) * 100}%` }"></div>
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">{{ subject.studentCount }} élèves</div>
+                </div>
               </div>
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Paiements ce mois</span>
-                <span class="font-medium text-primary-600">{{ paymentsThisMonth }}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-600">Taux de paiement</span>
-                <span class="font-medium text-warning-600">{{ paymentRate.toFixed(1) }}%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Class Rankings and Financial Stats -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Best Classes by Average -->
+          <div class="card">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Classes avec les Meilleures Moyennes</h3>
+            <div class="space-y-3">
+              <div v-for="(classe, index) in bestClasses" :key="classe.id" class="flex items-center justify-between p-3 rounded-lg" :class="index === 0 ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50'">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold" :class="index === 0 ? 'bg-yellow-500 text-white' : 'bg-gray-300 text-gray-700'">
+                    {{ index + 1 }}
+                  </div>
+                  <div>
+                    <p class="font-medium text-gray-900">{{ classe.name }}</p>
+                    <p class="text-xs text-gray-500">{{ classe.studentCount }} élèves</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <p class="font-bold text-lg" :class="index === 0 ? 'text-yellow-600' : 'text-gray-700'">{{ classe.average.toFixed(1) }}/20</p>
+                  <p class="text-xs text-gray-500">{{ getClassPerformanceLabel(classe.average) }}</p>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Recent Activities -->
+          <!-- Financial Statistics -->
           <div class="card">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Activités Récentes</h3>
-            <div class="space-y-3">
-              <div class="flex items-center gap-3">
-                <div class="bg-primary-100 text-primary-600 rounded-full p-1">
-                  <i class="fas fa-user-plus text-xs"></i>
-                </div>
-                <div class="flex-1 text-sm">
-                  <p class="font-medium text-gray-900">{{ recentActivities.newStudents }} nouveaux élèves</p>
-                  <p class="text-gray-600">Cette semaine</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <div class="bg-success-100 text-success-600 rounded-full p-1">
-                  <i class="fas fa-clipboard-list text-xs"></i>
-                </div>
-                <div class="flex-1 text-sm">
-                  <p class="font-medium text-gray-900">{{ recentActivities.gradesEntered }} notes saisies</p>
-                  <p class="text-gray-600">Aujourd'hui</p>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Statistiques Financières</h3>
+            <div class="space-y-4">
+              <div class="bg-green-50 p-4 rounded-lg">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm text-green-600">Revenus Totaux</p>
+                    <p class="text-2xl font-bold text-green-700">{{ formatCurrency(financeStats.totalRevenue) }}</p>
+                  </div>
+                  <i class="fas fa-coins text-green-500 text-2xl"></i>
                 </div>
               </div>
-              <div class="flex items-center gap-3">
-                <div class="bg-warning-100 text-warning-600 rounded-full p-1">
-                  <i class="fas fa-money-bill text-xs"></i>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="bg-blue-50 p-3 rounded-lg text-center">
+                  <p class="text-xs text-blue-600">Paiements</p>
+                  <p class="text-lg font-bold text-blue-700">{{ financeStats.totalPayments }}</p>
                 </div>
-                <div class="flex-1 text-sm">
-                  <p class="font-medium text-gray-900">{{ recentActivities.paymentsReceived }} paiements</p>
-                  <p class="text-gray-600">Cette semaine</p>
+                <div class="bg-orange-50 p-3 rounded-lg text-center">
+                  <p class="text-xs text-orange-600">Taux Collecte</p>
+                  <p class="text-lg font-bold text-orange-700">{{ financeStats.collectionRate.toFixed(1) }}%</p>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="bg-yellow-50 p-3 rounded-lg text-center">
+                  <p class="text-xs text-yellow-600">En Attente</p>
+                  <p class="text-lg font-bold text-yellow-700">{{ formatCurrency(financeStats.pendingAmount) }}</p>
+                </div>
+                <div class="bg-red-50 p-3 rounded-lg text-center">
+                  <p class="text-xs text-red-600">En Retard</p>
+                  <p class="text-lg font-bold text-red-700">{{ formatCurrency(financeStats.overdueAmount) }}</p>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Class Statistics -->
+        <div class="card">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Statistiques des Classes</h3>
+          <div class="overflow-x-auto">
+            <table class="min-w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Classe</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Élèves</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Moyenne</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Taux Réussite</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Meilleur Élève</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                <tr v-for="stat in classStatistics" :key="stat.id" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 font-medium text-gray-900">{{ stat.name }}</td>
+                  <td class="px-4 py-3 text-center text-gray-700">{{ stat.studentCount }}</td>
+                  <td class="px-4 py-3 text-center">
+                    <span class="font-bold" :class="getPerformanceClass(stat.average)">{{ stat.average.toFixed(1) }}/20</span>
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium" :class="getSuccessRateClass(stat.successRate)">
+                      {{ stat.successRate.toFixed(1) }}%
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-center text-sm">
+                    <div>
+                      <p class="font-medium text-gray-900">{{ stat.bestStudent.name }}</p>
+                      <p class="text-xs text-gray-500">{{ stat.bestStudent.average.toFixed(1) }}/20</p>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </main>
@@ -303,11 +368,78 @@ const paymentRate = computed(() => {
   return expectedPayments > 0 ? (actualPayments / expectedPayments) * 100 : 0
 })
 
-const recentActivities = computed(() => ({
-  newStudents: Math.floor(Math.random() * 5) + 1,
-  gradesEntered: Math.floor(Math.random() * 20) + 10,
-  paymentsReceived: Math.floor(Math.random() * 8) + 3
-}))
+const top3StudentsByClass = computed(() => {
+  return classesStore.classes.map(classe => {
+    const classStudents = studentsStore.getStudentsByClass(classe.id)
+    const studentsWithAverages = classStudents.map(student => {
+      const studentGrades = gradesStore.getGradesByStudent(student.id)
+      const average = studentGrades.length > 0 ? studentGrades.reduce((sum, g) => sum + g.grade, 0) / studentGrades.length : 0
+      return { id: student.id, name: `${student.firstName} ${student.lastName}`, average }
+    }).sort((a, b) => b.average - a.average).slice(0, 3)
+    
+    return { classId: classe.id, className: classe.name, students: studentsWithAverages }
+  })
+})
+
+const subjectPerformance = computed(() => {
+  return subjectsStore.subjects.map(subject => {
+    const subjectGrades = gradesStore.grades.filter(g => g.subjectId === subject.id)
+    const average = subjectGrades.length > 0 ? subjectGrades.reduce((sum, g) => sum + g.grade, 0) / subjectGrades.length : 0
+    const studentCount = new Set(subjectGrades.map(g => g.studentId)).size
+    return { id: subject.id, name: subject.name, average, studentCount }
+  }).sort((a, b) => b.average - a.average)
+})
+
+const bestClasses = computed(() => {
+  return classesStore.classes.map(classe => {
+    const classStudents = studentsStore.getStudentsByClass(classe.id)
+    const allGrades = classStudents.flatMap(student => gradesStore.getGradesByStudent(student.id))
+    const average = allGrades.length > 0 ? allGrades.reduce((sum, g) => sum + g.grade, 0) / allGrades.length : 0
+    return { id: classe.id, name: classe.name, average, studentCount: classStudents.length }
+  }).sort((a, b) => b.average - a.average)
+})
+
+const financeStats = computed(() => {
+  const payments = financeStore.payments
+  const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0)
+  const pendingAmount = payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0)
+  const overdueAmount = payments.filter(p => p.status === 'overdue').reduce((sum, p) => sum + p.amount, 0)
+  const collectionRate = totalRevenue > 0 ? ((totalRevenue - pendingAmount - overdueAmount) / totalRevenue) * 100 : 0
+  
+  return {
+    totalRevenue,
+    totalPayments: payments.length,
+    pendingAmount,
+    overdueAmount,
+    collectionRate
+  }
+})
+
+const classStatistics = computed(() => {
+  return classesStore.classes.map(classe => {
+    const classStudents = studentsStore.getStudentsByClass(classe.id)
+    const allGrades = classStudents.flatMap(student => gradesStore.getGradesByStudent(student.id))
+    const average = allGrades.length > 0 ? allGrades.reduce((sum, g) => sum + g.grade, 0) / allGrades.length : 0
+    const successRate = allGrades.length > 0 ? (allGrades.filter(g => g.grade >= 10).length / allGrades.length) * 100 : 0
+    
+    const studentsWithAverages = classStudents.map(student => {
+      const studentGrades = gradesStore.getGradesByStudent(student.id)
+      const studentAverage = studentGrades.length > 0 ? studentGrades.reduce((sum, g) => sum + g.grade, 0) / studentGrades.length : 0
+      return { name: `${student.firstName} ${student.lastName}`, average: studentAverage }
+    }).sort((a, b) => b.average - a.average)
+    
+    const bestStudent = studentsWithAverages[0] || { name: '-', average: 0 }
+    
+    return {
+      id: classe.id,
+      name: classe.name,
+      studentCount: classStudents.length,
+      average,
+      successRate,
+      bestStudent
+    }
+  })
+})
 
 function getSubjectName(subjectId) {
   const subject = subjectsStore.getSubjectById(subjectId)
@@ -334,6 +466,40 @@ function getGradeBarClass(grade) {
   if (grade >= 14) return 'bg-blue-500'
   if (grade >= 10) return 'bg-yellow-500'
   return 'bg-red-500'
+}
+
+function getRankClass(index) {
+  const classes = ['bg-yellow-500 text-white', 'bg-gray-400 text-white', 'bg-orange-400 text-white']
+  return classes[index] || 'bg-gray-300 text-gray-700'
+}
+
+function getPerformanceClass(average) {
+  if (average >= 16) return 'text-green-600'
+  if (average >= 14) return 'text-blue-600'
+  if (average >= 10) return 'text-yellow-600'
+  return 'text-red-600'
+}
+
+function getPerformanceBarClass(average) {
+  if (average >= 16) return 'bg-green-500'
+  if (average >= 14) return 'bg-blue-500'
+  if (average >= 10) return 'bg-yellow-500'
+  return 'bg-red-500'
+}
+
+function getClassPerformanceLabel(average) {
+  if (average >= 16) return 'Excellent'
+  if (average >= 14) return 'Très bien'
+  if (average >= 12) return 'Bien'
+  if (average >= 10) return 'Assez bien'
+  return 'À améliorer'
+}
+
+function getSuccessRateClass(rate) {
+  if (rate >= 80) return 'bg-green-100 text-green-800'
+  if (rate >= 60) return 'bg-blue-100 text-blue-800'
+  if (rate >= 40) return 'bg-yellow-100 text-yellow-800'
+  return 'bg-red-100 text-red-800'
 }
 
 function formatCurrency(amount) {

@@ -11,6 +11,7 @@ export const useTeachersStore = defineStore('teachers', () => {
       phone: '0123456789',
       subjects: [1, 2], // Mathématiques, Français
       classes: [1, 2],
+      weeklyHours: 18,
       hireDate: '2020-09-01'
     },
     {
@@ -21,6 +22,7 @@ export const useTeachersStore = defineStore('teachers', () => {
       phone: '0123456790',
       subjects: [3, 4], // Histoire, Géographie
       classes: [2, 3],
+      weeklyHours: 18,
       hireDate: '2019-09-01'
     },
         {
@@ -31,6 +33,7 @@ export const useTeachersStore = defineStore('teachers', () => {
       phone: '0123456791',
       subjects: [2, 5], // Français, Sciences
       classes: [1, 3],
+      weeklyHours: 18,
       hireDate: '2021-09-01'
     },
     {
@@ -41,6 +44,7 @@ export const useTeachersStore = defineStore('teachers', () => {
       phone: '0123456792',
       subjects: [1, 6], // Mathématiques, Anglais
       classes: [2],
+      weeklyHours: 18,
       hireDate: '2018-09-01'
     },
     {
@@ -51,6 +55,7 @@ export const useTeachersStore = defineStore('teachers', () => {
       phone: '0123456793',
       subjects: [4, 5], // Géographie, Sciences
       classes: [1, 2, 3],
+      weeklyHours: 18,
       hireDate: '2022-09-01'
     },
     {
@@ -61,6 +66,7 @@ export const useTeachersStore = defineStore('teachers', () => {
       phone: '0123456794',
       subjects: [1, 3], // Mathématiques, Histoire
       classes: [3],
+      weeklyHours: 18,
       hireDate: '2020-01-15'
     },
     {
@@ -71,6 +77,7 @@ export const useTeachersStore = defineStore('teachers', () => {
       phone: '0123456795',
       subjects: [2, 6], // Français, Anglais
       classes: [1, 2],
+      weeklyHours: 18,
       hireDate: '2017-09-01'
     }
   ])
@@ -80,8 +87,9 @@ export const useTeachersStore = defineStore('teachers', () => {
   function addTeacher(teacherData) {
     const teacher = {
       id: nextId.value++,
-      ...teacherData,
-      hireDate: new Date().toISOString().split('T')[0]
+      weeklyHours: 0,
+      hireDate: new Date().toISOString().split('T')[0],
+      ...teacherData
     }
     teachers.value.push(teacher)
     return teacher

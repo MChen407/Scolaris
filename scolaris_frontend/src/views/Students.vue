@@ -5,9 +5,9 @@
     <div class="main-content">
       <Header />
       
-      <main class="p-6">
+      <main class="p-6 overflow-y-auto flex-1">
         <BaseTable
-          :data="studentsWithClassNames"
+          :data="filteredStudents"
           :columns="columns"
           title="Liste des Élèves"
           @search="handleSearch"
@@ -27,6 +27,12 @@
           
           <template #cell-birthDate="{ value }">
             {{ formatDate(value) }}
+          </template>
+          
+          <template #cell-enrollmentStatus="{ value }">
+            <span :class="getStatusClass(value)" class="px-2 py-1 rounded-full text-sm font-medium">
+              {{ getStatusLabel(value) }}
+            </span>
           </template>
           
           <template #row-actions="{ item }">
@@ -141,6 +147,38 @@
                 </option>
               </select>
             </div>
+
+            <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Statut d'inscription</label>
+    <select v-model="studentForm.enrollmentStatus" required class="input-field">
+      <option value="pending">En attente</option>
+      <option value="active">Actif</option>
+      <option value="suspended">Suspendu</option>
+      <option value="graduated">Diplômé</option>
+    </select>
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Documents requis</label>
+    <div class="space-y-2">
+      <label class="flex items-center">
+        <input type="checkbox" v-model="studentForm.documents.birthCertificate" class="mr-2">
+        Acte de naissance
+      </label>
+      <label class="flex items-center">
+        <input type="checkbox" v-model="studentForm.documents.medicalCertificate" class="mr-2">
+        Certificat médical
+      </label>
+      <label class="flex items-center">
+        <input type="checkbox" v-model="studentForm.documents.photos" class="mr-2">
+        Photos d'identité
+      </label>
+      <label class="flex items-center">
+        <input type="checkbox" v-model="studentForm.documents.previousSchoolReport" class="mr-2">
+        Bulletin école précédente
+      </label>
+    </div>
+  </div>
           </form>
         </BaseModal>
 
@@ -150,8 +188,9 @@
           title="Détails de l'Élève"
           :show-footer="false"
           @close="showDetailsModal = false"
+          class="max-w-3xl"
         >
-          <div v-if="selectedStudent" class="space-y-6">
+          <div v-if="selectedStudent" class="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
             <!-- Student Info -->
             <div class="bg-gray-50 rounded-lg p-4">
               <h4 class="font-semibold text-gray-900 mb-3">Informations Personnelles</h4>
@@ -188,7 +227,7 @@
               <h4 class="font-semibold text-gray-900 mb-3">Historique des Paiements</h4>
               <div class="space-y-2">
                 <div
-                  v-for="payment in selectedStudent.payments"
+                  v-for="payment in selectedStudent.payments || []"
                   :key="payment.id"
                   class="flex justify-between items-center p-3 bg-green-50 rounded-lg"
                 >
@@ -198,7 +237,7 @@
                   </div>
                   <span class="font-bold text-green-600">{{ formatCurrency(payment.amount) }}</span>
                 </div>
-                <div v-if="selectedStudent.payments.length === 0" class="text-center py-4 text-gray-500">
+                <div v-if="!selectedStudent.payments || selectedStudent.payments.length === 0" class="text-center py-4 text-gray-500">
                   Aucun paiement enregistré
                 </div>
               </div>
@@ -239,23 +278,35 @@ const studentForm = ref({
   birthDate: '',
   guardian: '',
   phone: '',
-  classId: ''
+  classId: '',
+  enrollmentStatus: 'pending',
+  documents: {
+    birthCertificate: false,
+    medicalCertificate: false,
+    photos: false,
+    previousSchoolReport: false
+  }
 })
+
+const searchTerm = ref('')
 
 onMounted(() => {
   authStore.initAuth()
 })
 
+// Colonnes de la table
 const columns = [
   { key: 'firstName', label: 'Prénom' },
   { key: 'lastName', label: 'Nom' },
   { key: 'gender', label: 'Sexe' },
   { key: 'birthDate', label: 'Date de naissance' },
   { key: 'className', label: 'Classe' },
+  { key: 'enrollmentStatus', label: 'Statut' },
   { key: 'guardian', label: 'Tuteur' },
   { key: 'phone', label: 'Téléphone' }
 ]
 
+// Ajout du nom de classe pour chaque élève
 const studentsWithClassNames = computed(() => {
   return studentsStore.students.map(student => ({
     ...student,
@@ -263,6 +314,17 @@ const studentsWithClassNames = computed(() => {
   }))
 })
 
+// Filtrage par recherche
+const filteredStudents = computed(() => {
+  if (!searchTerm.value) return studentsWithClassNames.value
+  return studentsWithClassNames.value.filter(student =>
+    Object.values(student).some(val =>
+      String(val).toLowerCase().includes(searchTerm.value.toLowerCase())
+    )
+  )
+})
+
+// Récupérer le nom d'une classe par id
 function getClassName(classId) {
   const classe = classesStore.getClassById(classId)
   return classe ? classe.name : 'Non assigné'
@@ -270,7 +332,15 @@ function getClassName(classId) {
 
 function editStudent(student) {
   editingStudent.value = student
-  studentForm.value = { ...student }
+  studentForm.value = {
+    firstName: student.firstName,
+    lastName: student.lastName,
+    gender: student.gender,
+    birthDate: student.birthDate,
+    guardian: student.guardian,
+    phone: student.phone,
+    classId: student.classId
+  }
   showEditModal.value = true
 }
 
@@ -300,7 +370,14 @@ function resetForm() {
     birthDate: '',
     guardian: '',
     phone: '',
-    classId: ''
+    classId: '',
+    enrollmentStatus: 'pending',
+    documents: {
+      birthCertificate: false,
+      medicalCertificate: false,
+      photos: false,
+      previousSchoolReport: false
+    }
   }
 }
 
@@ -309,9 +386,9 @@ async function saveStudent() {
   
   try {
     if (editingStudent.value) {
-      studentsStore.updateStudent(editingStudent.value.id, { ...studentForm.value })
+      await studentsStore.updateStudent(editingStudent.value.id, { ...studentForm.value })
     } else {
-      studentsStore.addStudent({ ...studentForm.value })
+      await studentsStore.addStudent({ ...studentForm.value })
     }
     closeModal()
   } catch (error) {
@@ -321,11 +398,40 @@ async function saveStudent() {
   }
 }
 
-function formatDate(dateString) {
-  return new Date(dateString).toLocaleDateString('fr-FR')
+// Gestion de la recherche
+function handleSearch(term) {
+  searchTerm.value = term
 }
 
+function formatDate(dateString) {
+  if (!dateString) return ''
+  const d = new Date(dateString)
+  if (isNaN(d)) return ''
+  return d.toLocaleDateString('fr-FR')
+}
+
+function getStatusClass(status) {
+  const classes = {
+    'pending': 'bg-yellow-100 text-yellow-800',
+    'active': 'bg-green-100 text-green-800',
+    'suspended': 'bg-red-100 text-red-800',
+    'graduated': 'bg-blue-100 text-blue-800'
+  }
+  return classes[status] || 'bg-gray-100 text-gray-800'
+}
+
+function getStatusLabel(status) {
+  const labels = {
+    'pending': 'En attente',
+    'active': 'Actif',
+    'suspended': 'Suspendu',
+    'graduated': 'Diplômé'
+  }
+  return labels[status] || status
+        }
+
 function formatCurrency(amount) {
+  if (typeof amount !== 'number') return ''
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'XOF',
@@ -341,5 +447,10 @@ function formatCurrency(amount) {
 
 .main-content {
   @apply flex-1 flex flex-col overflow-hidden;
+}
+
+/* IMPORTANT : Autoriser le scroll sur le contenu principal */
+main {
+  @apply overflow-y-auto flex-1;
 }
 </style>

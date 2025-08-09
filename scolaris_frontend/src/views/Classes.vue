@@ -2,17 +2,17 @@
   <div class="layout-container">
     <Sidebar :collapsed="sidebarCollapsed" @toggle-sidebar="sidebarCollapsed = !sidebarCollapsed" />
     
-    <div class="main-content">
+    <div class="main-content flex flex-col overflow-auto">
       <Header />
       
-      <main class="p-6">
+      <main class="p-6 flex-1 overflow-auto">
         <BaseTable
           :data="classesStore.classesWithStats"
           :columns="columns"
           title="Liste des Classes"
         >
           <template #actions>
-            <button @click="showAddModal = true" class="btn-primary">
+            <button @click="openAddModal" class="btn-primary">
               <i class="fas fa-plus mr-2"></i>
               Nouvelle Classe
             </button>
@@ -23,24 +23,38 @@
               {{ value }} élèves
             </span>
           </template>
+          <template #cell-subjects="{ item }">
+            <div class="flex flex-wrap gap-1">
+              <span
+                v-for="subjectName in getSubjectNames(item.subjects)"
+                :key="subjectName"
+                class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs"
+              >
+                {{ subjectName }}
+              </span>
+            </div>
+          </template>
           
           <template #row-actions="{ item }">
             <div class="flex gap-2">
               <button
                 @click="editClass(item)"
                 class="text-primary-600 hover:text-primary-900 transition-colors"
+                title="Modifier"
               >
                 <i class="fas fa-edit"></i>
               </button>
               <button
                 @click="viewStudents(item)"
                 class="text-success-600 hover:text-success-900 transition-colors"
+                title="Voir les élèves"
               >
                 <i class="fas fa-users"></i>
               </button>
               <button
                 @click="deleteClass(item)"
                 class="text-danger-600 hover:text-danger-900 transition-colors"
+                title="Supprimer"
               >
                 <i class="fas fa-trash"></i>
               </button>
@@ -65,6 +79,7 @@
                 required
                 class="input-field"
                 placeholder="Ex: 6ème A"
+                autocomplete="off"
               >
             </div>
             
@@ -106,17 +121,35 @@
                 placeholder="Nombre maximum d'élèves"
               >
             </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Matières enseignées</label>
+              <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3">
+                <label
+                  v-for="subject in subjectsStore.subjects"
+                  :key="subject.id"
+                  class="flex items-center space-x-2"
+                >
+                  <input
+                    type="checkbox"
+                    :value="subject.id"
+                    v-model="classForm.subjects"
+                    class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  >
+                  <span class="text-sm">{{ subject.name }}</span>
+                </label>
+              </div>
+            </div>
           </form>
         </BaseModal>
 
         <!-- Students List Modal -->
         <BaseModal
           :show="showStudentsModal"
-          :title="`Élèves de ${selectedClass?.name}`"
+          :title="`Élèves de ${selectedClass?.name || ''}`"
           :show-footer="false"
           @close="showStudentsModal = false"
         >
-          <div v-if="classStudents.length > 0" class="space-y-3">
+          <div v-if="classStudents.length > 0" class="space-y-3 max-h-96 overflow-auto">
             <div
               v-for="student in classStudents"
               :key="student.id"
@@ -151,11 +184,20 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import { useClassesStore } from '@/stores/classes'
 import { useStudentsStore } from '@/stores/students'
 import { useAuthStore } from '@/stores/auth'
+import { useSubjectsStore } from '@/stores/subjects'
 
 const sidebarCollapsed = ref(false)
 const classesStore = useClassesStore()
 const studentsStore = useStudentsStore()
 const authStore = useAuthStore()
+const subjectsStore = useSubjectsStore()
+
+function getSubjectNames(subjectIds) {
+  if (!subjectIds || !Array.isArray(subjectIds)) return []
+  return subjectIds
+    .map(id => subjectsStore.subjects.find(s => s.id === id)?.name)
+    .filter(Boolean)
+}
 
 const showAddModal = ref(false)
 const showEditModal = ref(false)
@@ -168,7 +210,8 @@ const classForm = ref({
   name: '',
   level: '',
   section: '',
-  capacity: 30
+  capacity: 30,
+  subjects: []
 })
 
 onMounted(() => {
@@ -180,7 +223,8 @@ const columns = [
   { key: 'level', label: 'Niveau' },
   { key: 'section', label: 'Section' },
   { key: 'capacity', label: 'Capacité' },
-  { key: 'studentCount', label: 'Élèves inscrits' }
+  { key: 'studentCount', label: 'Élèves inscrits' },
+  {key: 'subjects', label: 'Matières'}
 ]
 
 const classStudents = computed(() => {
@@ -188,10 +232,17 @@ const classStudents = computed(() => {
   return studentsStore.getStudentsByClass(selectedClass.value.id)
 })
 
+function openAddModal() {
+  resetForm()
+  editingClass.value = null
+  showAddModal.value = true
+}
+
 function editClass(classe) {
   editingClass.value = classe
   classForm.value = { ...classe }
   showEditModal.value = true
+  showAddModal.value = false
 }
 
 function viewStudents(classe) {
@@ -222,7 +273,8 @@ function resetForm() {
     name: '',
     level: '',
     section: '',
-    capacity: 30
+    capacity: 30,
+    subjects: []
   }
 }
 
@@ -231,9 +283,9 @@ async function saveClass() {
   
   try {
     if (editingClass.value) {
-      classesStore.updateClass(editingClass.value.id, { ...classForm.value })
+      await classesStore.updateClass(editingClass.value.id, { ...classForm.value })
     } else {
-      classesStore.addClass({ ...classForm.value })
+      await classesStore.addClass({ ...classForm.value })
     }
     closeModal()
   } catch (error) {
@@ -255,5 +307,18 @@ function formatDate(dateString) {
 
 .main-content {
   @apply flex-1 flex flex-col overflow-hidden;
+}
+
+main {
+  /* Permet au main de prendre tout l'espace restant et scrollable */
+  @apply flex-1 overflow-auto;
+}
+
+.input-field {
+  @apply w-full rounded border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-primary-500;
+}
+
+.btn-primary {
+  @apply bg-primary-600 text-white px-4 py-2 rounded hover:bg-primary-700 transition-colors;
 }
 </style>

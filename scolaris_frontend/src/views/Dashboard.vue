@@ -2,13 +2,13 @@
   <div class="layout-container">
     <Sidebar :collapsed="sidebarCollapsed" @toggle-sidebar="sidebarCollapsed = !sidebarCollapsed" />
     
-    <div class="main-content">
+    <div class="main-content flex flex-col overflow-auto">
       <Header />
       
-      <main class="p-6 space-y-6">
+      <main class="p-6 space-y-6 flex-1 overflow-auto">
         <!-- Statistics Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div class="stat-card">
+          <div class="stat-card bg-primary-500 text-white rounded-lg p-6 shadow-lg">
             <div class="flex items-center justify-between">
               <div>
                 <p class="text-white/80 text-sm">Total Élèves</p>
@@ -51,7 +51,7 @@
 
         <!-- Quick Actions -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div class="card">
+          <div class="card bg-white p-6 rounded-lg shadow">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Actions Rapides</h3>
             <div class="grid grid-cols-2 gap-4">
               <router-link
@@ -66,9 +66,9 @@
             </div>
           </div>
           
-          <div class="card">
+          <div class="card bg-white p-6 rounded-lg shadow overflow-auto">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Classes les plus importantes</h3>
-            <div class="space-y-3">
+            <div class="space-y-3 max-h-96 overflow-auto">
               <div
                 v-for="classe in classesWithMostStudents"
                 :key="classe.id"
@@ -88,9 +88,9 @@
         </div>
 
         <!-- Recent Activities -->
-        <div class="card">
+        <div class="card bg-white p-6 rounded-lg shadow overflow-auto">
           <h3 class="text-lg font-semibold text-gray-900 mb-4">Activités Récentes</h3>
-          <div class="space-y-4">
+          <div class="space-y-4 max-h-96 overflow-auto">
             <div class="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
               <div class="bg-primary-100 text-primary-600 rounded-full p-2">
                 <i class="fas fa-user-plus"></i>
