@@ -349,8 +349,11 @@ const existingGrades = computed(() => {
     selectedSubjectId.value,
     selectedPeriod.value
   )) {
-    if (!grouped[grade.studentId]) {
-      grouped[grade.studentId] = {
+    const key = `${grade.studentId}-${grade.subjectId}`
+    if (!grouped[key]) {
+      grouped[key] = {
+        studentId: grade.studentId,
+        subjectId: grade.subjectId,
         studentName: getStudentName(grade.studentId),
         subjectName: getSubjectName(grade.subjectId),
         period: grade.period,
@@ -360,10 +363,10 @@ const existingGrades = computed(() => {
       }
     }
     if (grade.type === 'Interro' && grade.index !== undefined && grade.index < 3) {
-      grouped[grade.studentId].interros[grade.index] = grade.grade
+      grouped[key].interros[grade.index] = grade.grade
     }
     if (grade.type === 'Devoir' && grade.index !== undefined && grade.index < 2) {
-      grouped[grade.studentId].devoirs[grade.index] = grade.grade
+      grouped[key].devoirs[grade.index] = grade.grade
     }
   }
 
@@ -468,12 +471,12 @@ function getGradeStatusText(grade) {
 }
 
 function getStudentName(studentId) {
-  const student = studentsStore.getStudentById(studentId)
+  const student = studentsStore.students.find(s => s.id === studentId)
   return student ? `${student.firstName} ${student.lastName}` : 'Élève inconnu'
 }
 
 function getSubjectName(subjectId) {
-  const subject = subjectsStore.getSubjectById(subjectId)
+  const subject = subjectsStore.subjects.find(s => s.id === subjectId)
   return subject ? subject.name : 'Matière inconnue'
 }
 
@@ -482,60 +485,64 @@ async function saveAllGrades() {
   
   try {
     for (const [studentId, notes] of Object.entries(studentGrades.value)) {
-  // Interros
-  notes.interros.forEach((grade, idx) => {
-    if (grade !== null && grade !== undefined && grade !== '') {
-      const existing = gradesStore.grades.find(g =>
-        g.studentId === parseInt(studentId) &&
-        g.subjectId === selectedSubjectId.value &&
-        g.classId === selectedClassId.value &&
-        g.period === selectedPeriod.value &&
-        g.type === 'Interro' &&
-        g.index === idx
-      )
-      if (existing) {
-        gradesStore.updateGrade(existing.id, { grade: parseFloat(grade) })
-      } else {
-        gradesStore.addGrade({
-          studentId: parseInt(studentId),
-          subjectId: selectedSubjectId.value,
-          classId: selectedClassId.value,
-          period: selectedPeriod.value,
-          grade: parseFloat(grade),
-          maxGrade: 20,
-          type: 'Interro',
-          index: idx
-        })
-      }
-    }
-  })
-  // Devoirs
-  notes.devoirs.forEach((grade, idx) => {
-    if (grade !== null && grade !== undefined && grade !== '') {
-      const existing = gradesStore.grades.find(g =>
-        g.studentId === parseInt(studentId) &&
-        g.subjectId === selectedSubjectId.value &&
-        g.classId === selectedClassId.value &&
-        g.period === selectedPeriod.value &&
-        g.type === 'Devoir' &&
-        g.index === idx
-      )
-      if (existing) {
-        gradesStore.updateGrade(existing.id, { grade: parseFloat(grade) })
-      } else {
-        gradesStore.addGrade({
-          studentId: parseInt(studentId),
-          subjectId: selectedSubjectId.value,
-          classId: selectedClassId.value,
-          period: selectedPeriod.value,
-          grade: parseFloat(grade),
-          maxGrade: 20,
-          type: 'Devoir',
-          index: idx
-        })
-      }
-    }
-  })
+      const numStudentId = parseInt(studentId)
+      const numSubjectId = parseInt(selectedSubjectId.value)
+      const numClassId = parseInt(selectedClassId.value)
+      
+      // Interros
+      notes.interros.forEach((grade, idx) => {
+        if (grade !== null && grade !== undefined && grade !== '') {
+          const existing = gradesStore.grades.find(g =>
+            g.studentId === numStudentId &&
+            g.subjectId === numSubjectId &&
+            g.classId === numClassId &&
+            g.period === selectedPeriod.value &&
+            g.type === 'Interro' &&
+            g.index === idx
+          )
+          if (existing) {
+            gradesStore.updateGrade(existing.id, { grade: parseFloat(grade) })
+          } else {
+            gradesStore.addGrade({
+              studentId: numStudentId,
+              subjectId: numSubjectId,
+              classId: numClassId,
+              period: selectedPeriod.value,
+              grade: parseFloat(grade),
+              maxGrade: 20,
+              type: 'Interro',
+              index: idx
+            })
+          }
+        }
+      })
+      // Devoirs
+      notes.devoirs.forEach((grade, idx) => {
+        if (grade !== null && grade !== undefined && grade !== '') {
+          const existing = gradesStore.grades.find(g =>
+            g.studentId === numStudentId &&
+            g.subjectId === numSubjectId &&
+            g.classId === numClassId &&
+            g.period === selectedPeriod.value &&
+            g.type === 'Devoir' &&
+            g.index === idx
+          )
+          if (existing) {
+            gradesStore.updateGrade(existing.id, { grade: parseFloat(grade) })
+          } else {
+            gradesStore.addGrade({
+              studentId: numStudentId,
+              subjectId: numSubjectId,
+              classId: numClassId,
+              period: selectedPeriod.value,
+              grade: parseFloat(grade),
+              maxGrade: 20,
+              type: 'Devoir',
+              index: idx
+            })
+          }
+        }
+      })
     }
     alert('Notes enregistrées avec succès!')
   } catch (error) {

@@ -16,7 +16,8 @@ export const useFinanceStore = defineStore('finance', () => {
       amount: 50000,
       date: '2023-09-01',
       method: 'Espèces',
-      reference: 'REC001'
+      reference: 'REC001',
+      status: 'completed'
     },
     {
       id: 2,
@@ -25,7 +26,8 @@ export const useFinanceStore = defineStore('finance', () => {
       amount: 25000,
       date: '2023-10-01',
       method: 'Chèque',
-      reference: 'REC002'
+      reference: 'REC002',
+      status: 'completed'
     },
     {
       id: 3,
@@ -34,7 +36,8 @@ export const useFinanceStore = defineStore('finance', () => {
       amount: 50000,
       date: '2023-09-01',
       method: 'Virement',
-      reference: 'REC003'
+      reference: 'REC003',
+      status: 'completed'
     }
   ])
 
@@ -42,7 +45,9 @@ export const useFinanceStore = defineStore('finance', () => {
   const nextPaymentId = ref(4)
 
   const totalRevenue = computed(() => {
-    return payments.value.reduce((sum, payment) => sum + payment.amount, 0)
+    return payments.value
+      .filter(p => p.status === 'completed')
+      .reduce((sum, payment) => sum + payment.amount, 0)
   })
 
   const paymentsByStudent = computed(() => {
@@ -55,7 +60,8 @@ export const useFinanceStore = defineStore('finance', () => {
     }, {})
   })
 
-  function addFeeType(feeTypeData) {
+
+   function addFeeType(feeTypeData) {
     const feeType = {
       id: nextFeeTypeId.value++,
       ...feeTypeData
@@ -85,12 +91,22 @@ export const useFinanceStore = defineStore('finance', () => {
   function addPayment(paymentData) {
     const payment = {
       id: nextPaymentId.value++,
-      ...paymentData,
       date: new Date().toISOString().split('T')[0],
-      reference: `REC${String(nextPaymentId.value).padStart(3, '0')}`
+      reference: `REC${String(nextPaymentId.value).padStart(3, '0')}`,
+      status: 'completed',
+      ...paymentData
     }
     payments.value.push(payment)
     return payment
+  }
+
+  function updatePaymentStatus(id, status) {
+    const payment = payments.value.find(p => p.id === id)
+    if (payment) {
+      payment.status = status
+      return payment
+    }
+    return null
   }
 
   function getPaymentsByStudent(studentId) {
@@ -98,8 +114,6 @@ export const useFinanceStore = defineStore('finance', () => {
   }
 
   function getUnpaidStudents() {
-    // Logic to determine unpaid students based on fee types and payments
-    // This is a simplified version
     return []
   }
 
@@ -112,6 +126,7 @@ export const useFinanceStore = defineStore('finance', () => {
     updateFeeType,
     deleteFeeType,
     addPayment,
+    updatePaymentStatus,
     getPaymentsByStudent,
     getUnpaidStudents
   }

@@ -3,14 +3,14 @@ import { ref } from 'vue'
 
 export const useSubjectsStore = defineStore('subjects', () => {
   const subjects = ref([
-    { id: 1, name: 'Mathématiques', coefficient: 4, category: 'Sciences' },
-    { id: 2, name: 'Français', coefficient: 4, category: 'Lettres' },
-    { id: 3, name: 'Histoire', coefficient: 2, category: 'Sciences Humaines' },
-    { id: 4, name: 'Géographie', coefficient: 2, category: 'Sciences Humaines' },
-    { id: 5, name: 'Anglais', coefficient: 3, category: 'Langues' },
-    { id: 6, name: 'SVT', coefficient: 3, category: 'Sciences' },
-    { id: 7, name: 'Physique', coefficient: 3, category: 'Sciences' },
-    { id: 8, name: 'EPS', coefficient: 1, category: 'Sport' }
+    { id: 1, name: 'Mathématiques', coefficient: 4, category: 'Sciences', classes: [1, 2, 3, 4] },
+    { id: 2, name: 'Français', coefficient: 4, category: 'Lettres', classes: [1, 2, 3, 4] },
+    { id: 3, name: 'Histoire', coefficient: 2, category: 'Sciences Humaines', classes: [1, 2, 3, 4] },
+    { id: 4, name: 'Géographie', coefficient: 2, category: 'Sciences Humaines', classes: [1, 2, 3, 4] },
+    { id: 5, name: 'Anglais', coefficient: 3, category: 'Langues', classes: [1, 2, 3, 4] },
+    { id: 6, name: 'SVT', coefficient: 3, category: 'Sciences', classes: [2, 3, 4] },
+    { id: 7, name: 'Physique', coefficient: 3, category: 'Sciences', classes: [3, 4] },
+    { id: 8, name: 'EPS', coefficient: 1, category: 'Sport', classes: [1, 2, 3, 4] }
   ])
 
   const nextId = ref(9)
@@ -18,6 +18,7 @@ export const useSubjectsStore = defineStore('subjects', () => {
   function addSubject(subjectData) {
     const subject = {
       id: nextId.value++,
+      classes: [],
       ...subjectData
     }
     subjects.value.push(subject)

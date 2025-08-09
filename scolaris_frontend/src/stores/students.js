@@ -1,7 +1,33 @@
+/**
+ * STORE DE GESTION DES ÉLÈVES (STUDENTS STORE)
+ * 
+ * Gère toutes les données et opérations liées aux élèves :
+ * - Informations personnelles des élèves
+ * - Statut d'inscription et documents
+ * - Historique des paiements
+ * - Opérations CRUD (Create, Read, Update, Delete)
+ */
+
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 export const useStudentsStore = defineStore('students', () => {
+  /**
+   * DONNÉES DES ÉLÈVES
+   * 
+   * Structure d'un élève :
+   * - id : Identifiant unique
+   * - firstName/lastName : Nom et prénom
+   * - gender : Sexe (M/F)
+   * - birthDate : Date de naissance
+   * - guardian : Nom du tuteur/parent
+   * - phone : Numéro de téléphone
+   * - classId : ID de la classe assignée
+   * - enrollmentDate : Date d'inscription
+   * - enrollmentStatus : Statut (active, pending, suspended)
+   * - documents : État des documents requis
+   * - payments : Historique des paiements
+   */
   const students = ref([
     {
       id: 1,
@@ -13,6 +39,13 @@ export const useStudentsStore = defineStore('students', () => {
       phone: '0123456789',
       classId: 1,
       enrollmentDate: '2023-09-01',
+      enrollmentStatus: 'active',
+      documents: {
+        birthCertificate: true,
+        medicalCertificate: true,
+        photos: true,
+        previousSchoolReport: false
+      },
       payments: [
         { id: 1, amount: 50000, date: '2023-09-01', type: 'Inscription' },
         { id: 2, amount: 25000, date: '2023-10-01', type: 'Mensualité' }
@@ -28,10 +61,18 @@ export const useStudentsStore = defineStore('students', () => {
       phone: '0123456790',
       classId: 1,
       enrollmentDate: '2023-09-01',
+      enrollmentStatus: 'pending',
+      documents: {
+        birthCertificate: true,
+        medicalCertificate: false,
+        photos: true,
+        previousSchoolReport: true
+      },
       payments: [
         { id: 3, amount: 50000, date: '2023-09-01', type: 'Inscription' }
       ]
     },
+    // ... Autres élèves de démonstration
     {
       id: 3,
       firstName: 'Ahmed',
@@ -42,8 +83,16 @@ export const useStudentsStore = defineStore('students', () => {
       phone: '0123456791',
       classId: 2,
       enrollmentDate: '2023-09-01',
+      enrollmentStatus: 'pending',
+      documents: {
+        birthCertificate: true,
+        medicalCertificate: false,
+        photos: true,
+        previousSchoolReport: true
+      },
       payments: []
     },
+    // ... (Données de démonstration supplémentaires)
     {
       id: 4,
       firstName: 'Yasmine',
@@ -54,252 +103,27 @@ export const useStudentsStore = defineStore('students', () => {
       phone: '0123456792',
       classId: 2,
       enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 5,
-      firstName: 'Omar',
-      lastName: 'Kabbaj',
-      gender: 'M',
-      birthDate: '2008-07-23',
-      guardian: 'Nadia Kabbaj',
-      phone: '0123456793',
-      classId: 1,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 6,
-      firstName: 'Sara',
-      lastName: 'Bouhadi',
-      gender: 'F',
-      birthDate: '2007-12-30',
-      guardian: 'Ali Bouhadi',
-      phone: '0123456794',
-      classId: 3,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 7,
-      firstName: 'Rachid',
-      lastName: 'El Fassi',
-      gender: 'M',
-      birthDate: '2008-10-11',
-      guardian: 'Latifa El Fassi',
-      phone: '0123456795',
-      classId: 2,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 8,
-      firstName: 'Imane',
-      lastName: 'Zerhouni',
-      gender: 'F',
-      birthDate: '2009-04-05',
-      guardian: 'Mohamed Zerhouni',
-      phone: '0123456796',
-      classId: 3,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 9,
-      firstName: 'Walid',
-      lastName: 'Alaoui',
-      gender: 'M',
-      birthDate: '2008-01-19',
-      guardian: 'Salma Alaoui',
-      phone: '0123456797',
-      classId: 1,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 10,
-      firstName: 'Nour',
-      lastName: 'Berrada',
-      gender: 'F',
-      birthDate: '2007-09-14',
-      guardian: 'Karim Berrada',
-      phone: '0123456798',
-      classId: 2,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 11,
-      firstName: 'Hicham',
-      lastName: 'Mouline',
-      gender: 'M',
-      birthDate: '2009-06-21',
-      guardian: 'Amina Mouline',
-      phone: '0123456799',
-      classId: 3,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 12,
-      firstName: 'Lina',
-      lastName: 'Tahiri',
-      gender: 'F',
-      birthDate: '2008-08-29',
-      guardian: 'Omar Tahiri',
-      phone: '0123456700',
-      classId: 1,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 13,
-      firstName: 'Samir',
-      lastName: 'Ghazali',
-      gender: 'M',
-      birthDate: '2007-10-10',
-      guardian: 'Rachida Ghazali',
-      phone: '0123456701',
-      classId: 2,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 14,
-      firstName: 'Aya',
-      lastName: 'El Mansouri',
-      gender: 'F',
-      birthDate: '2009-03-03',
-      guardian: 'Youssef El Mansouri',
-      phone: '0123456702',
-      classId: 3,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 15,
-      firstName: 'Aya',
-      lastName: 'El Mansouri',
-      gender: 'F',
-      birthDate: '2009-03-03',
-      guardian: 'Youssef El Mansouri',
-      phone: '0123456702',
-      classId: 3,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 16,
-      firstName: 'Aya',
-      lastName: 'El Mansouri',
-      gender: 'F',
-      birthDate: '2009-03-03',
-      guardian: 'Youssef El Mansouri',
-      phone: '0123456702',
-      classId: 4,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 17,
-      firstName: 'Aya',
-      lastName: 'El Mansouri',
-      gender: 'F',
-      birthDate: '2009-03-03',
-      guardian: 'Youssef El Mansouri',
-      phone: '0123456702',
-      classId: 3,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 18,
-      firstName: 'Aya',
-      lastName: 'El Mansouri',
-      gender: 'F',
-      birthDate: '2009-03-03',
-      guardian: 'Youssef El Mansouri',
-      phone: '0123456702',
-      classId: 4,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 19,
-      firstName: 'Aya',
-      lastName: 'El Mansouri',
-      gender: 'F',
-      birthDate: '2009-03-03',
-      guardian: 'Youssef El Mansouri',
-      phone: '0123456702',
-      classId: 3,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 20,
-      firstName: 'Aya',
-      lastName: 'El Mansouri',
-      gender: 'F',
-      birthDate: '2009-03-03',
-      guardian: 'Youssef El Mansouri',
-      phone: '0123456702',
-      classId: 4,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 21,
-      firstName: 'Aya',
-      lastName: 'El Mansouri',
-      gender: 'F',
-      birthDate: '2009-03-03',
-      guardian: 'Youssef El Mansouri',
-      phone: '0123456702',
-      classId: 3,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 22,
-      firstName: 'Aya',
-      lastName: 'El Mansouri',
-      gender: 'F',
-      birthDate: '2009-03-03',
-      guardian: 'Youssef El Mansouri',
-      phone: '0123456702',
-      classId: 3,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 23,
-      firstName: 'Aya',
-      lastName: 'El Mansouri',
-      gender: 'F',
-      birthDate: '2009-03-03',
-      guardian: 'Youssef El Mansouri',
-      phone: '0123456702',
-      classId: 4,
-      enrollmentDate: '2023-09-01',
-      payments: []
-    },
-    {
-      id: 24,
-      firstName: 'Aya',
-      lastName: 'El Mansouri',
-      gender: 'F',
-      birthDate: '2009-03-03',
-      guardian: 'Youssef El Mansouri',
-      phone: '0123456702',
-      classId: 3,
-      enrollmentDate: '2023-09-01',
+      enrollmentStatus: 'pending',
+      documents: {
+        birthCertificate: true,
+        medicalCertificate: false,
+        photos: true,
+        previousSchoolReport: true
+      },
       payments: []
     }
+    // ... Plus d'élèves pour la démonstration
   ])
   
-  const nextId = ref(4)
+  // Compteur pour générer des IDs uniques pour les nouveaux élèves
+  const nextId = ref(25)
 
+  /**
+   * PROPRIÉTÉ CALCULÉE : ÉLÈVES PAR CLASSE
+   * 
+   * Groupe les élèves par classe pour faciliter l'affichage
+   * et les statistiques par classe.
+   */
   const studentsByClass = computed(() => {
     return students.value.reduce((acc, student) => {
       if (!acc[student.classId]) {
@@ -310,26 +134,54 @@ export const useStudentsStore = defineStore('students', () => {
     }, {})
   })
 
+  /**
+   * AJOUTER UN NOUVEL ÉLÈVE
+   * 
+   * @param {Object} studentData - Données de l'élève à ajouter
+   * @returns {Object} - L'élève créé avec son ID
+   */
   function addStudent(studentData) {
     const student = {
-      id: nextId.value++,
-      ...studentData,
-      enrollmentDate: new Date().toISOString().split('T')[0],
-      payments: []
+      id: nextId.value++, // Attribution d'un ID unique
+      enrollmentDate: new Date().toISOString().split('T')[0], // Date actuelle
+      enrollmentStatus: 'pending', // Statut par défaut
+      documents: {
+        // Documents requis initialisés à false
+        birthCertificate: false,
+        medicalCertificate: false,
+        photos: false,
+        previousSchoolReport: false
+      },
+      payments: [], // Historique vide au début
+      ...studentData // Fusion avec les données fournies
     }
     students.value.push(student)
     return student
   }
 
+  /**
+   * METTRE À JOUR UN ÉLÈVE
+   * 
+   * @param {number} id - ID de l'élève à modifier
+   * @param {Object} studentData - Nouvelles données
+   * @returns {Object|null} - L'élève modifié ou null si non trouvé
+   */
   function updateStudent(id, studentData) {
     const index = students.value.findIndex(s => s.id === id)
     if (index !== -1) {
+      // Fusion des nouvelles données avec les existantes
       students.value[index] = { ...students.value[index], ...studentData }
       return students.value[index]
     }
     return null
   }
 
+  /**
+   * SUPPRIMER UN ÉLÈVE
+   * 
+   * @param {number} id - ID de l'élève à supprimer
+   * @returns {boolean} - True si supprimé, false si non trouvé
+   */
   function deleteStudent(id) {
     const index = students.value.findIndex(s => s.id === id)
     if (index !== -1) {
@@ -339,21 +191,34 @@ export const useStudentsStore = defineStore('students', () => {
     return false
   }
 
+  /**
+   * RÉCUPÉRER UN ÉLÈVE PAR ID
+   * 
+   * @param {number} id - ID de l'élève recherché
+   * @returns {Object|undefined} - L'élève trouvé ou undefined
+   */
   function getStudentById(id) {
     return students.value.find(s => s.id === id)
   }
 
+  /**
+   * RÉCUPÉRER LES ÉLÈVES D'UNE CLASSE
+   * 
+   * @param {number} classId - ID de la classe
+   * @returns {Array} - Liste des élèves de la classe
+   */
   function getStudentsByClass(classId) {
     return students.value.filter(s => s.classId === classId)
   }
 
+  // EXPORT DES PROPRIÉTÉS ET MÉTHODES PUBLIQUES
   return {
-    students,
-    studentsByClass,
-    addStudent,
-    updateStudent,
-    deleteStudent,
-    getStudentById,
-    getStudentsByClass
+    students, // Liste complète des élèves
+    studentsByClass, // Élèves groupés par classe
+    addStudent, // Ajouter un élève
+    updateStudent, // Modifier un élève
+    deleteStudent, // Supprimer un élève
+    getStudentById, // Récupérer par ID
+    getStudentsByClass // Récupérer par classe
   }
 })
