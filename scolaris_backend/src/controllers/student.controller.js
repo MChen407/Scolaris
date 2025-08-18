@@ -32,7 +32,7 @@ const deleteStudent = async (req, res) => {
     res.status(200).json({message: "Elève supprimé"});
 }
 
-module.export = {
+module.exports = {
     getAllStudents,
     createStudent,
     updateStudent,
