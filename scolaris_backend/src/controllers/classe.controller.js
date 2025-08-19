@@ -1,6 +1,6 @@
-import  Classe from "../models/index.model";
+import  Classe from "../models/index.model.js";
 
-const getAllClasses = async (req, res) => {
+export const getAllClasses = async (req, res) => {
     const classes = await Classe.findAll();
     res.json(classes);
 }

@@ -1,8 +1,8 @@
 'use strict';
 
-export default {
+module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('Classes', {
+    await queryInterface.createTable('FeeTypes', {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -13,17 +13,13 @@ export default {
         type: Sequelize.STRING,
         allowNull: false
       },
-      level: {
-        type: Sequelize.STRING,
+      amount: {
+        type: Sequelize.FLOAT,
         allowNull: false
       },
-      section: {
-        type: Sequelize.STRING,
-        allowNull: false
-      },
-      capacity: {
-        type: Sequelize.INTEGER,
-        allowNull: false
+      dueDate: {
+        type: Sequelize.DATEONLY,
+        allowNull: true
       },
       createdAt: {
         allowNull: false,
@@ -39,6 +35,6 @@ export default {
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('Classes');
+    await queryInterface.dropTable('FeeTypes');
   }
 };

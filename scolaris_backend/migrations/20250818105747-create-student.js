@@ -1,6 +1,6 @@
 'use strict';
 
-export default {
+module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable('Students', {
       id: {
@@ -11,33 +11,33 @@ export default {
       },
       firstName: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
       },
       lastName: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
       },
       gender: {
         type: Sequelize.ENUM('M', 'F'),
-        allowNull: false
+        allowNull: true
       },
       birthDate: {
         type: Sequelize.DATEONLY,
-        allowNull: false
+        allowNull: true
       },
       guardian: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
       },
       phone: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
       },
       classId: {
         type: Sequelize.INTEGER,
-        allowNull: false,
+        allowNull: true,
         references: {
-          model: 'Classes', // nom de la table cible
+          model: 'Classes', 
           key: 'id'
         },
         onUpdate: 'CASCADE',
@@ -45,11 +45,21 @@ export default {
       },
       enrollmentDate: {
         type: Sequelize.DATEONLY,
-        allowNull: false
+        allowNull: true
       },
       enrollmentStatus: {
         type: Sequelize.ENUM('active', 'pending', 'suspended', 'graduated'),
-        allowNull: false
+        allowNull: true
+      },
+      documents: {
+        type: Sequelize.JSON,
+        allowNull: true,
+        defaultValue: {
+          birthCertificate: false,
+          medicalCertificate: false,
+          photos: false,
+          previousSchoolReport: false
+        }
       },
       createdAt: {
         allowNull: false,

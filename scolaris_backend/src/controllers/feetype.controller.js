@@ -1,17 +1,17 @@
-import FeeType from "../models/feeType.model";
+import FeeType from "../models/feeType.model.js";
 
-const getAllFeeTypes = async (req, res) => {
+export const getAllFeeTypes = async (req, res) => {
     const feeType = await FeeType.findAll();
     res.json(feeType);
 }
 
-const createFeeType = async (req, res) => {
+export const createFeeType = async (req, res) => {
     const {name, amount, dueDate} = req.body;
     const feeType = await FeeType.create({name, amount, dueDate});
     res.status(201).json(feeType);
 }
 
-const updateFeeType = async (req, res) => {
+export const updateFeeType = async (req, res) => {
     const {id} = req.params;
     const {name, amount, dueDate} = req.body;
     const feeType = await FeeType.findByPk(id);
@@ -22,7 +22,7 @@ const updateFeeType = async (req, res) => {
     res.json(feeType);
 }
 
-const deleteType = async (req, res) => {
+export const deleteType = async (req, res) => {
     const {id} = req.params;
     const feeType = await FeeType.findByPk(id);
     if(!feeType) {
@@ -30,11 +30,4 @@ const deleteType = async (req, res) => {
     }
     await feeType.destroy();
     res.json({message: "Type de payement supprimé avec succès"});
-}
-
-module.exports = {
-    getAllFeeTypes,
-    createFeeType,
-    updateFeeType,
-    deleteType
 }

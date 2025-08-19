@@ -292,6 +292,7 @@ const searchTerm = ref('')
 
 onMounted(() => {
   authStore.initAuth()
+  studentsStore.fetchStudents()
 })
 
 // Colonnes de la table
@@ -339,7 +340,14 @@ function editStudent(student) {
     birthDate: student.birthDate,
     guardian: student.guardian,
     phone: student.phone,
-    classId: student.classId
+    classId: student.classId,
+    enrollmentStatus: student.enrollmentStatus || 'pending',
+    documents: student.documents || {
+      birthCertificate: false,
+      medicalCertificate: false,
+      photos: false,
+      previousSchoolReport: false
+    }
   }
   showEditModal.value = true
 }

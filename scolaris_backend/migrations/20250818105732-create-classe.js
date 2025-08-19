@@ -1,37 +1,28 @@
 'use strict';
 
-export default {
+module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('Teachers', {
+    await queryInterface.createTable('Classes', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      firstName: {
+      name: {
         type: Sequelize.STRING,
         allowNull: false
       },
-      lastName: {
+      level: {
         type: Sequelize.STRING,
         allowNull: false
       },
-      email: {
-        type: Sequelize.STRING,
-        allowNull: false,
-        unique: true
-      },
-      phone: {
+      section: {
         type: Sequelize.STRING,
         allowNull: false
       },
-      weeklyHours: {
+      capacity: {
         type: Sequelize.INTEGER,
-        allowNull: false
-      },
-      hireDate: {
-        type: Sequelize.DATEONLY,
         allowNull: false
       },
       createdAt: {
@@ -48,6 +39,6 @@ export default {
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('Teachers');
+    await queryInterface.dropTable('Classes');
   }
 };
