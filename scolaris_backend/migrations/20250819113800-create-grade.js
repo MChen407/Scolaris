@@ -2,7 +2,7 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('Payments', {
+    await queryInterface.createTable('Grades', {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -19,34 +19,45 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
       },
-      feeTypeId: {
+      subjectId: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
-          model: 'FeeTypes',
+          model: 'Subjects',
           key: 'id'
         },
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
       },
-      amount: {
-        type: Sequelize.FLOAT,
+      classId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Classes',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
+      },
+      period: {
+        type: Sequelize.STRING,
         allowNull: false
+      },
+      grade: {
+        type: Sequelize.DECIMAL(4, 2),
+        allowNull: false
+      },
+      maxGrade: {
+        type: Sequelize.DECIMAL(4, 2),
+        allowNull: false,
+        defaultValue: 20
       },
       date: {
         type: Sequelize.DATEONLY,
         allowNull: false
       },
-      method: {
-        type: Sequelize.STRING,
-        allowNull: false
-      },
-      reference: {
-        type: Sequelize.STRING,
-        allowNull: false
-      },
-      status: {
-        type: Sequelize.ENUM("completed", "pending", "cancelled"),
+      type: {
+        type: Sequelize.ENUM('Devoir', 'Interro'),
         allowNull: false
       },
       createdAt: {
@@ -63,6 +74,6 @@ module.exports = {
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('Payments');
+    await queryInterface.dropTable('Grades');
   }
 };

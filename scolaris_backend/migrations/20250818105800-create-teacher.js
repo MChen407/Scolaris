@@ -45,9 +45,91 @@ module.exports = {
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       }
     });
+
+    // Table associative Teacher-Subject
+    await queryInterface.createTable('TeacherSubjects', {
+      id: {
+        allowNull: false,
+        autoIncrement: true,
+        primaryKey: true,
+        type: Sequelize.INTEGER
+      },
+      teacherId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Teachers',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
+      },
+      subjectId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Subjects',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
+      },
+      createdAt: {
+        allowNull: false,
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+      },
+      updatedAt: {
+        allowNull: false,
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+      }
+    });
+
+    // Table associative Teacher-Classe
+    await queryInterface.createTable('TeacherClasses', {
+      id: {
+        allowNull: false,
+        autoIncrement: true,
+        primaryKey: true,
+        type: Sequelize.INTEGER
+      },
+      teacherId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Teachers',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
+      },
+      classId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Classes',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
+      },
+      createdAt: {
+        allowNull: false,
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+      },
+      updatedAt: {
+        allowNull: false,
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+      }
+    });
   },
 
   down: async (queryInterface, Sequelize) => {
+    await queryInterface.dropTable('TeacherClasses');
+    await queryInterface.dropTable('TeacherSubjects');
     await queryInterface.dropTable('Teachers');
   }
 };
