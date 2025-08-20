@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
-import sequelize from "../config/database.js";
+import sequelize from "../../config/database.js";
 
-const Student = sequelize.define("Student", {
+const Student = sequelize.define("Students", {
   firstName: { type: DataTypes.STRING, allowNull: true },
   lastName: { type: DataTypes.STRING, allowNull: true },
   gender: { type: DataTypes.ENUM("M", "F"), allowNull: true },
@@ -11,7 +11,7 @@ const Student = sequelize.define("Student", {
   classId: { type: DataTypes.INTEGER, allowNull: true },
   enrollmentDate: { type: DataTypes.DATEONLY, allowNull: true },
   enrollmentStatus: { type: DataTypes.ENUM("active", "pending", "suspended", "graduated"), allowNull: true },
-    documents: { // Ajout du champ documents
+    documents: { 
     type: DataTypes.JSON,
     allowNull: true,
     defaultValue: {

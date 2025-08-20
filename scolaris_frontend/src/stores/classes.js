@@ -1,16 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import axios from 'axios'
 import { useStudentsStore } from './students'
 
 export const useClassesStore = defineStore('classes', () => {
-  const classes = ref([
-    { id: 1, name: '6ème A', level: '6ème', section: 'A', capacity: 30, subjects: [1, 2, 3, 4, 5, 8] },
-    { id: 2, name: '5ème B', level: '5ème', section: 'B', capacity: 35, subjects: [1, 2, 3, 4, 5, 6, 8] },
-    { id: 3, name: '4ème A', level: '4ème', section: 'A', capacity: 32, subjects: [1, 2, 3, 4, 5, 6, 7, 8] },
-    { id: 4, name: '3ème C', level: '3ème', section: 'C', capacity: 28, subjects: [1, 2, 3, 4, 5, 6, 7, 8] }
-  ])
-
-  const nextId = ref(5)
+  const classes = ref([])
 
   const classesWithStats = computed(() => {
     const studentsStore = useStudentsStore()
@@ -24,63 +18,39 @@ export const useClassesStore = defineStore('classes', () => {
     }))
   })
 
- // Helper function pour éviter la duplication de code
- function findClassIndex(id) {
-    return classes.value.findIndex(c => c.id === id)
+  async function fetchClasses() {
+    const res = await axios.get('http://localhost:3000/api/classes')
+    classes.value = res.data
   }
 
-
- function addClass(classData) {
-    if (!classData?.name || !classData?.level) {
-      throw new Error('Nom et niveau de classe requis')
-    }
-
-    const newClass = {
-      id: nextId.value++,
-      capacity: 30,
-      subjects: [],
-      ...classData
-    }
-    classes.value.push(newClass)
-    return newClass
+  async function addClass(classData) {
+    const res = await axios.post('http://localhost:3000/api/classes', classData)
+    classes.value.push(res.data)
+    return res.data
   }
 
-  function updateClass(id, classData) {
-    const index = findClassIndex(id)
-    if (index !== -1) {
-      classes.value[index] = { ...classes.value[index], ...classData }
-      return classes.value[index]
-    }
-    return null
+  async function updateClass(id, classData) {
+    const res = await axios.put(`http://localhost:3000/api/classes/${id}`, classData)
+    const idx = classes.value.findIndex(c => c.id === id)
+    if (idx !== -1) classes.value[idx] = res.data
+    return res.data
   }
 
- function updateClass(id, classData) {
-    const index = findClassIndex(id)
-    if (index !== -1) {
-      classes.value[index] = { ...classes.value[index], ...classData }
-      return classes.value[index]
-    }
-    return null
+  async function deleteClass(id) {
+    await axios.delete(`http://localhost:3000/api/classes/${id}`)
+    classes.value = classes.value.filter(c => c.id !== id)
   }
 
-
-
-  function deleteClass(id) {
-    const index = findClassIndex(id)
-    if (index !== -1) {
-      classes.value.splice(index, 1)
-      return true
-    }
-    return false
-  }
-
-function getClassById(id) {
+  function getClassById(id) {
     return classes.value.find(c => c.id === id)
   }
+
+  fetchClasses()
 
   return {
     classes,
     classesWithStats,
+    fetchClasses,
     addClass,
     updateClass,
     deleteClass,

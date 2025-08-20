@@ -1,7 +1,9 @@
 import studentRoutes from "./src/routes/student.route.js";
+import subjectRoutes from "./src/routes/subject.route.js";
+import classeRoutes from "./src/routes/classe.route.js";
 import cors from "cors";
 import express from "express";
-import sequelize from "./src/config/database.js";
+
 
 
 const app = express();
@@ -9,10 +11,6 @@ const app = express();
 // Middleware pour parser le JSON
 app.use(express.json());
 
-
-sequelize.sync({ force: true }) // ⚠️ supprime et recrée toutes les tables
-  .then(() => console.log("✅ Base de données recréée avec succès"))
-  .catch(err => console.error("❌ Erreur :", err));
 
 
 // Middleware CORS pour autoriser mon frontend
@@ -22,6 +20,8 @@ app.use(cors({
 }));
 
 app.use("/api/students", studentRoutes);
+app.use("/api/subjects", subjectRoutes);
+app.use("/api/classes", classeRoutes);
 
 
 app.listen(3000, () => {

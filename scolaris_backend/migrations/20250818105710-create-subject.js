@@ -53,7 +53,7 @@ module.exports = {
       },
       subjectId: {
         type: Sequelize.INTEGER,
-        allowNull: false,
+        allowNull: true,
         references: {
           model: 'Subjects',
           key: 'id'

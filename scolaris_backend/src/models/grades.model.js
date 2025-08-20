@@ -1,7 +1,7 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+import { DataTypes } from "sequelize";
+import sequelize from "../../config/database.js";
 
-const Grade = sequelize.define('Grade', {
+const Grade = sequelize.define('Grades', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -11,7 +11,7 @@ const Grade = sequelize.define('Grade', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'students',
+      model: 'Students',
       key: 'id'
     }
   },
@@ -19,7 +19,7 @@ const Grade = sequelize.define('Grade', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'subjects',
+      model: 'Subjects',
       key: 'id'
     }
   },
@@ -27,7 +27,7 @@ const Grade = sequelize.define('Grade', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'classes',
+      model: 'Classes',
       key: 'id'
     }
   },
@@ -53,8 +53,8 @@ const Grade = sequelize.define('Grade', {
     allowNull: false
   }
 }, {
-  tableName: 'grades',
+  tableName: 'Grades',
   timestamps: true
 });
 
-module.exports = Grade;
+export default Grade;

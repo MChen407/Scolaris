@@ -1,5 +1,5 @@
 import Student from "./student.model.js";
-import Classe from "./class.model.js";
+import Classe from "./classe.model.js";
 import Subject from "./subject.model.js";
 import Teacher from "./teacher.model.js";
 import Grade from "./grades.model.js";
@@ -11,8 +11,8 @@ Student.belongsTo(Classe, { foreignKey: "classId" });
 Classe.hasMany(Student, { foreignKey: "classId" });
 
 // Classe - Subject (Many-to-Many)
-Classe.belongsToMany(Subject, { through: "ClassSubjects", foreignKey: "classId" });
-Subject.belongsToMany(Classe, { through: "ClassSubjects", foreignKey: "subjectId" });
+Classe.belongsToMany(Subject, { through: "ClassSubjects", foreignKey: "classId", as: "Subjects" });
+Subject.belongsToMany(Classe, { through: "ClassSubjects", foreignKey: "subjectId", as: "Classes" });
 
 // Teacher - Subject (Many-to-Many)
 Teacher.belongsToMany(Subject, { through: "TeacherSubjects", foreignKey: "teacherId" });

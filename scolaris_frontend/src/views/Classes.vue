@@ -26,7 +26,7 @@
           <template #cell-subjects="{ item }">
             <div class="flex flex-wrap gap-1">
               <span
-                v-for="subjectName in getSubjectNames(item.subjects)"
+                v-for="subjectName in getSubjectNames(item.Subjects)"
                 :key="subjectName"
                 class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs"
               >
@@ -192,11 +192,9 @@ const studentsStore = useStudentsStore()
 const authStore = useAuthStore()
 const subjectsStore = useSubjectsStore()
 
-function getSubjectNames(subjectIds) {
-  if (!subjectIds || !Array.isArray(subjectIds)) return []
-  return subjectIds
-    .map(id => subjectsStore.subjects.find(s => s.id === id)?.name)
-    .filter(Boolean)
+function getSubjectNames(subjects) {
+  if (!subjects || !Array.isArray(subjects)) return []
+  return subjects.map(s => s.name)
 }
 
 const showAddModal = ref(false)
@@ -240,7 +238,13 @@ function openAddModal() {
 
 function editClass(classe) {
   editingClass.value = classe
-  classForm.value = { ...classe }
+  classForm.value = {
+    name: classe.name,
+    level: classe.level,
+    section: classe.section,
+    capacity: classe.capacity,
+    subjects: classe.Subjects ? classe.Subjects.map(s => s.id) : []
+  }
   showEditModal.value = true
   showAddModal.value = false
 }
@@ -282,10 +286,18 @@ async function saveClass() {
   loading.value = true
   
   try {
+    const data = {
+      name: classForm.value.name,
+      level: classForm.value.level,
+      section: classForm.value.section,
+      capacity: classForm.value.capacity,
+      subjectIds: classForm.value.subjects
+    }
+    
     if (editingClass.value) {
-      await classesStore.updateClass(editingClass.value.id, { ...classForm.value })
+      await classesStore.updateClass(editingClass.value.id, data)
     } else {
-      await classesStore.addClass({ ...classForm.value })
+      await classesStore.addClass(data)
     }
     closeModal()
   } catch (error) {

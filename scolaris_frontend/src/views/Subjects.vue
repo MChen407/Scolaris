@@ -28,7 +28,7 @@
           <template #cell-classes="{ item }">
             <div class="flex flex-wrap gap-1">
               <span
-                v-for="className in getClassNames(item.classes)"
+                v-for="className in getClassNames(item.Classes)"
                 :key="className"
                 class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs"
               >
@@ -157,11 +157,9 @@ const columns = [
   { key: 'classes', label: 'Classes' }
 ]
 
-function getClassNames(classIds) {
-  if (!classIds || !Array.isArray(classIds)) return []
-  return classIds
-    .map(id => classesStore.classes.find(c => c.id === id)?.name)
-    .filter(Boolean)
+function getClassNames(classes) {
+  if (!classes || !Array.isArray(classes)) return []
+  return classes.map(c => c.name)
 }
 
 function getCategoryClass(category) {
@@ -178,7 +176,12 @@ function getCategoryClass(category) {
 
 function editSubject(subject) {
   editingSubject.value = subject
-  subjectForm.value = { ...subject }
+  subjectForm.value = {
+    name: subject.name,
+    coefficient: subject.coefficient,
+    category: subject.category,
+    classes: subject.Classes ? subject.Classes.map(c => c.id) : []
+  }
   showEditModal.value = true
 }
 
@@ -207,10 +210,17 @@ function resetForm() {
 async function saveSubject() {
   loading.value = true
   try {
+    const data = {
+      name: subjectForm.value.name,
+      coefficient: subjectForm.value.coefficient,
+      category: subjectForm.value.category,
+      classIds: subjectForm.value.classes
+    }
+    
     if (editingSubject.value) {
-      await subjectsStore.updateSubject(editingSubject.value.id, { ...subjectForm.value })
+      await subjectsStore.updateSubject(editingSubject.value.id, data)
     } else {
-      await subjectsStore.addSubject({ ...subjectForm.value })
+      await subjectsStore.addSubject(data)
     }
     closeModal()
   } catch (error) {

@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
-import sequelize from "../config/database.js";
+import sequelize from "../../config/database.js";
 
-const Payment = sequelize.define("Payment", {
+const Payment = sequelize.define("Payments", {
   studentId: { type: DataTypes.INTEGER, allowNull: false },
   feeTypeId: { type: DataTypes.INTEGER, allowNull: false },
   amount: { type: DataTypes.FLOAT, allowNull: false },
