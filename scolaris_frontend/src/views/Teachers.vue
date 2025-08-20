@@ -19,11 +19,27 @@
           </template>
           
           <template #cell-subjectNames="{ value }">
-            <span class="text-sm">{{ value }}</span>
+            <div class="flex flex-wrap gap-1">
+              <span
+                v-for="subjectName in value.split(', ').filter(Boolean)"
+                :key="subjectName"
+                class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs"
+              >
+                {{ subjectName }}
+              </span>
+            </div>
           </template>
           
           <template #cell-classNames="{ value }">
-            <span class="text-sm text-gray-600">{{ value }}</span>
+            <div class="flex flex-wrap gap-1">
+              <span
+                v-for="className in value.split(', ').filter(Boolean)"
+                :key="className"
+                class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs"
+              >
+                {{ className }}
+              </span>
+            </div>
           </template>
           
           <template #row-actions="{ item }">
@@ -187,8 +203,9 @@ const teacherForm = ref({
   weeklyHours: 0
 })
 
-onMounted(() => {
-  authStore.initAuth()
+onMounted(async () => {
+  await authStore.initAuth()
+  await teachersStore.fetchTeachers()
 })
 
 const columns = [
@@ -204,13 +221,11 @@ const columns = [
 const teachersWithDetails = computed(() => {
   return teachersStore.teachers.map(teacher => ({
     ...teacher,
-    subjectNames: teacher.subjects
-      .map(id => subjectsStore.getSubjectById(id)?.name)
-      .filter(Boolean)
+    subjectNames: (teacher.Subjects || [])
+      .map(subject => subject.name)
       .join(', '),
-    classNames: teacher.classes
-      .map(id => classesStore.getClassById(id)?.name)
-      .filter(Boolean)
+    classNames: (teacher.Classes || [])
+      .map(classe => classe.name)
       .join(', ')
   }))
 })
@@ -250,10 +265,20 @@ async function saveTeacher() {
   loading.value = true
   
   try {
+    const data = {
+      firstName: teacherForm.value.firstName,
+      lastName: teacherForm.value.lastName,
+      email: teacherForm.value.email,
+      phone: teacherForm.value.phone,
+      subjectIds: teacherForm.value.subjects,
+      classIds: teacherForm.value.classes,
+      weeklyHours: teacherForm.value.weeklyHours
+    }
+
     if (editingTeacher.value) {
-      teachersStore.updateTeacher(editingTeacher.value.id, { ...teacherForm.value })
+      await teachersStore.updateTeacher(editingTeacher.value.id, data)
     } else {
-      teachersStore.addTeacher({ ...teacherForm.value })
+      await teachersStore.addTeacher(data)
     }
     closeModal()
   } catch (error) {

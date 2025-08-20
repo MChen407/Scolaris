@@ -15,12 +15,12 @@ Classe.belongsToMany(Subject, { through: "ClassSubjects", foreignKey: "classId",
 Subject.belongsToMany(Classe, { through: "ClassSubjects", foreignKey: "subjectId", as: "Classes" });
 
 // Teacher - Subject (Many-to-Many)
-Teacher.belongsToMany(Subject, { through: "TeacherSubjects", foreignKey: "teacherId" });
-Subject.belongsToMany(Teacher, { through: "TeacherSubjects", foreignKey: "subjectId" });
+Teacher.belongsToMany(Subject, { through: "TeacherSubjects", foreignKey: "teacherId", as: "Subjects" });
+Subject.belongsToMany(Teacher, { through: "TeacherSubjects", foreignKey: "subjectId", as: "Teachers" });
 
 // Teacher - Classe (Many-to-Many)
-Teacher.belongsToMany(Classe, { through: "TeacherClasses", foreignKey: "teacherId" });
-Classe.belongsToMany(Teacher, { through: "TeacherClasses", foreignKey: "classId" });
+Teacher.belongsToMany(Classe, { through: "TeacherClasses", foreignKey: "teacherId", as: "Classes" });
+Classe.belongsToMany(Teacher, { through: "TeacherClasses", foreignKey: "classId", as: "Teachers" });
 
 // Grade - Student, Subject, Classe
 Grade.belongsTo(Student, { foreignKey: "studentId" });
