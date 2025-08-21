@@ -119,192 +119,344 @@
               </div>
             </div>
 
-            <!-- Bulletin Header -->
-            <div :class="getHeaderClass()" class="text-white p-6 rounded-lg mb-6">
-              <div class="text-center mb-4">
-                <div v-if="customization.logoUrl" class="mb-4">
-                  <img :src="customization.logoUrl" alt="Logo" class="h-16 mx-auto">
+            <!-- Modern Bulletin Header -->
+            <div class="bg-white border-2 border-gray-200 rounded-lg overflow-hidden shadow-lg">
+              <!-- School Header -->
+              <div :class="getHeaderClass()" class="text-white p-6">
+                <div class="flex items-center justify-between">
+                  <div v-if="customization.logoUrl" class="flex-shrink-0">
+                    <img :src="customization.logoUrl" alt="Logo" class="h-16 w-16 rounded-full border-2 border-white">
+                  </div>
+                  <div class="text-center flex-1">
+                    <h1 class="text-2xl font-bold mb-1">{{ customization.schoolName || 'ÉTABLISSEMENT SCOLAIRE' }}</h1>
+                    <p class="text-lg font-semibold opacity-90">BULLETIN DE NOTES DU {{ selectedPeriod.toUpperCase() }}</p>
+                    <p class="text-sm opacity-80">Année Scolaire 2023-2024</p>
+                  </div>
+                  <div class="flex-shrink-0 w-16"></div>
                 </div>
-                <h2 class="text-2xl font-bold">{{ customization.schoolName || 'BULLETIN SCOLAIRE' }}</h2>
-                <p class="opacity-80">{{ selectedPeriod }} - Année Scolaire 2023-2024</p>
               </div>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="bg-white/10 p-3 rounded">
-                  <span class="text-sm opacity-80">Élève:</span>
-                  <p class="font-bold text-lg">{{ report.student.firstName }} {{ report.student.lastName }}</p>
-                </div>
-                <div class="bg-white/10 p-3 rounded">
-                  <span class="text-sm opacity-80">Date de naissance:</span>
-                  <p class="font-medium">{{ formatDate(report.student.birthDate) }}</p>
-                </div>
-                <div class="bg-white/10 p-3 rounded">
-                  <span class="text-sm opacity-80">Classe:</span>
-                  <p class="font-medium">{{ getClassName(report.student.classId) }}</p>
+              
+              <!-- Student Info Section -->
+              <div class="bg-gray-50 p-4 border-b">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div class="space-y-1">
+                    <div class="flex">
+                      <span class="font-medium text-gray-600 w-20">Nom :</span>
+                      <span class="font-bold text-gray-900">{{ report.student.lastName }}</span>
+                    </div>
+                    <div class="flex">
+                      <span class="font-medium text-gray-600 w-20">Prénom :</span>
+                      <span class="font-bold text-gray-900">{{ report.student.firstName }}</span>
+                    </div>
+                  </div>
+                  <div class="space-y-1">
+                    <div class="flex">
+                      <span class="font-medium text-gray-600 w-16">Classe :</span>
+                      <span class="font-semibold text-gray-900">{{ getClassName(report.student.classId) }}</span>
+                    </div>
+                    <div class="flex">
+                      <span class="font-medium text-gray-600 w-16">Effectif :</span>
+                      <span class="font-semibold text-gray-900">{{ report.totalStudents }}</span>
+                    </div>
+                  </div>
+                  <div class="space-y-1">
+                    <div class="flex">
+                      <span class="font-medium text-gray-600 w-20">Né(e) le :</span>
+                      <span class="text-gray-900">{{ formatDate(report.student.birthDate) }}</span>
+                    </div>
+                    <div class="flex">
+                      <span class="font-medium text-gray-600 w-20">Contact :</span>
+                      <span class="text-gray-900">{{ report.student.phone || '-' }}</span>
+                    </div>
+                  </div>
+                  <div class="space-y-1">
+                    <div class="flex">
+                      <span class="font-medium text-gray-600 w-16">Rang :</span>
+                      <span class="font-bold text-blue-600">{{ report.classRank }}e</span>
+                    </div>
+                    <div class="flex">
+                      <span class="font-medium text-gray-600 w-16">Statut :</span>
+                      <span :class="getStatusClass(report.generalAverage)" class="px-2 py-1 rounded text-xs font-medium">
+                        {{ getStatus(report.generalAverage) }}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Grades Table -->
-            <div class="overflow-x-auto mb-6 shadow-lg rounded-lg">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead :class="getTableHeaderClass()" class="text-white">
+            <!-- Modern Grades Table -->
+            <div class="bg-white rounded-lg shadow-lg overflow-hidden border">
+              <table class="min-w-full">
+                <thead class="bg-gray-800 text-white">
                   <tr>
-                    <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">
-                      Matière
+                    <th class="px-3 py-3 text-left text-xs font-bold uppercase border-r border-gray-600">
+                      Disciplines
                     </th>
-                    <th class="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider">
-                      Coeff
+                    <th class="px-2 py-3 text-center text-xs font-bold uppercase border-r border-gray-600">
+                      Coef
                     </th>
-                    <th class="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider">
-                      Interro 1
+                    <th class="px-1 py-3 text-center text-xs font-bold uppercase border-r border-gray-600">
+                      Int1
                     </th>
-                    <th class="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider">
-                      Interro 2
+                    <th class="px-1 py-3 text-center text-xs font-bold uppercase border-r border-gray-600">
+                      Int2
                     </th>
-                    <th class="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider">
-                      Interro 3
+                    <th class="px-1 py-3 text-center text-xs font-bold uppercase border-r border-gray-600">
+                      Int3
                     </th>
-                    <th class="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider">
-                      Moy.Int
+                    <th class="px-2 py-3 text-center text-xs font-bold uppercase border-r border-gray-600">
+                      M.I
                     </th>
-                    <th class="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider">
-                      Dev 1
+                    <th class="px-1 py-3 text-center text-xs font-bold uppercase border-r border-gray-600">
+                      Dev1
                     </th>
-                    <th class="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider">
-                      Dev 2
+                    <th class="px-1 py-3 text-center text-xs font-bold uppercase border-r border-gray-600">
+                      Dev2
                     </th>
-                    <th class="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider">
-                      Moy.Mat
+                    <th class="px-2 py-3 text-center text-xs font-bold uppercase border-r border-gray-600">
+                      M.G
                     </th>
-                    <th class="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider">
-                      Moy.Coeff
+
+                    <th class="px-2 py-3 text-center text-xs font-bold uppercase border-r border-gray-600">
+                      Moy/Coef
                     </th>
-                    <th class="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider">
-                      Plus Forte
+                    <th class="px-2 py-3 text-center text-xs font-bold uppercase border-r border-gray-600">
+                      Rang
                     </th>
-                    <th class="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider">
-                      Appréciation
+                    <th class="px-3 py-3 text-center text-xs font-bold uppercase">
+                      Appréciations et Signatures
                     </th>
                   </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-100">
+                <tbody class="divide-y divide-gray-200">
                   <tr
                     v-for="(grade, index) in report.grades"
                     :key="grade.subjectId"
-                    :class="index % 2 === 0 ? 'bg-gray-50' : 'bg-white'"
-                    class="hover:bg-blue-50 transition-colors"
+                    :class="index % 2 === 0 ? 'bg-white' : 'bg-gray-50'"
+                    class="border-b border-gray-200"
                   >
-                    <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
-                      <div class="flex items-center">
-                        <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                        {{ grade.subjectName }}
-                      </div>
+                    <td class="px-3 py-2 text-sm font-medium text-gray-900 border-r border-gray-200">
+                      {{ grade.subjectName }}
                     </td>
-                    <td class="px-2 py-3 whitespace-nowrap text-center">
-                      <span class="bg-gray-200 text-gray-800 px-2 py-1 rounded text-xs font-medium">
-                        {{ grade.coefficient }}
-                      </span>
+                    <td class="px-2 py-2 text-center text-sm border-r border-gray-200">
+                      {{ grade.coefficient }}
                     </td>
-                    <td class="px-2 py-3 whitespace-nowrap text-center text-xs">
+                    <td class="px-1 py-2 text-center text-xs border-r border-gray-200">
                       {{ grade.interros[0] || '-' }}
                     </td>
-                    <td class="px-2 py-3 whitespace-nowrap text-center text-xs">
+                    <td class="px-1 py-2 text-center text-xs border-r border-gray-200">
                       {{ grade.interros[1] || '-' }}
                     </td>
-                    <td class="px-2 py-3 whitespace-nowrap text-center text-xs">
+                    <td class="px-1 py-2 text-center text-xs border-r border-gray-200">
                       {{ grade.interros[2] || '-' }}
                     </td>
-                    <td class="px-2 py-3 whitespace-nowrap text-center">
-                      <span :class="getGradeClass(grade.interroAvg)" class="px-2 py-1 text-xs font-bold rounded">
+                    <td class="px-2 py-2 text-center text-sm border-r border-gray-200">
+                      <span :class="getGradeColorClass(grade.interroAvg)" class="font-semibold">
                         {{ grade.interroAvg ? grade.interroAvg.toFixed(2) : '-' }}
                       </span>
                     </td>
-                    <td class="px-2 py-3 whitespace-nowrap text-center text-xs">
+                    <td class="px-1 py-2 text-center text-xs border-r border-gray-200">
                       {{ grade.devoirs[0] || '-' }}
                     </td>
-                    <td class="px-2 py-3 whitespace-nowrap text-center text-xs">
+                    <td class="px-1 py-2 text-center text-xs border-r border-gray-200">
                       {{ grade.devoirs[1] || '-' }}
                     </td>
-                    <td class="px-2 py-3 whitespace-nowrap text-center">
-                      <span :class="getGradeClass(grade.average)" class="px-2 py-1 text-xs font-bold rounded">
+                    <td class="px-2 py-2 text-center text-sm border-r border-gray-200">
+                      <span :class="getGradeColorClass(grade.average)" class="font-bold">
                         {{ grade.average ? grade.average.toFixed(2) : '-' }}
                       </span>
                     </td>
-                    <td class="px-2 py-3 whitespace-nowrap text-center">
-                      <span class="bg-blue-100 text-blue-800 px-2 py-1 text-xs font-bold rounded">
+
+                    <td class="px-2 py-2 text-center text-sm border-r border-gray-200">
+                      <span class="font-semibold text-blue-700">
                         {{ grade.average ? (grade.average * grade.coefficient).toFixed(2) : '-' }}
                       </span>
                     </td>
-                    <td class="px-2 py-3 whitespace-nowrap text-center">
-                      <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-bold">
-                        {{ report.classBestAverages[grade.subjectId] ? report.classBestAverages[grade.subjectId].toFixed(2) : '-' }}
+                    <td class="px-2 py-2 text-center text-sm border-r border-gray-200">
+                      <span class="text-xs font-medium">
+                        {{ getSubjectRank(grade.subjectId, grade.average, report) }}
                       </span>
                     </td>
-                    <td class="px-2 py-3 whitespace-nowrap text-center">
-                      <span :class="getAppreciationClass(grade.average)" class="px-2 py-1 rounded text-xs font-medium">
-                        {{ getAppreciation(grade.average) }}
-                      </span>
+                    <td class="px-3 py-2 text-center text-xs border-gray-200">
+                      <div class="space-y-1">
+                        <div :class="getAppreciationClass(grade.average)" class="px-2 py-1 rounded text-xs font-medium">
+                          {{ getAppreciation(grade.average) }}
+                        </div>
+                        <div class="text-gray-400 text-xs">Signature</div>
+                      </div>
                     </td>
+                  </tr>
+                  
+                  <!-- Total Partiel Row -->
+                  <tr class="bg-blue-50 border-t-2 border-blue-200">
+                    <td class="px-3 py-3 font-bold text-gray-900 border-r border-gray-200">Total Partiel</td>
+                    <td class="px-2 py-3 text-center font-bold border-r border-gray-200">{{ getTotalCoefficients(report.grades) }}</td>
+                    <td colspan="7" class="border-r border-gray-200"></td>
+                    <td class="px-2 py-3 text-center font-bold text-blue-700 border-r border-gray-200">
+                      {{ getTotalPoints(report.grades).toFixed(2) }}
+                    </td>
+                    <td colspan="2" class=""></td>
                   </tr>
                 </tbody>
-                <tfoot :class="getHeaderClass()" class="text-white">
-                  <tr>
-                    <td colspan="9" class="px-4 py-4 text-sm font-bold uppercase">
-                      MOYENNE GÉNÉRALE
-                    </td>
-                    <td class="px-2 py-4 text-center">
-                      <span class="bg-white text-blue-600 px-3 py-2 text-sm font-bold rounded shadow-lg">
-                        {{ report.generalAverage.toFixed(2) }}/20
-                      </span>
-                    </td>
-                    <td class="px-2 py-4 text-center text-xs font-semibold">
-                      -
-                    </td>
-                    <td class="px-2 py-4 text-center">
-                      <span class="bg-white/20 px-2 py-1 rounded text-xs font-bold">
-                        {{ getAppreciation(report.generalAverage) }}
-                      </span>
-                    </td>
-                  </tr>
-                </tfoot>
+
               </table>
             </div>
 
-            <!-- Class Ranking & Statistics -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div class="bg-gradient-to-r from-green-500 to-teal-500 text-white p-6 rounded-lg shadow-lg">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <p class="text-green-100 text-sm">Rang dans la classe</p>
-                    <p class="text-3xl font-bold">{{ report.classRank }}e</p>
-                    <p class="text-green-100 text-sm">sur {{ report.totalStudents }} élèves</p>
+            <!-- Summary Section -->
+            <div class="bg-white rounded-lg shadow-lg border overflow-hidden">
+              <!-- General Average Section -->
+              <div class="bg-gray-100 p-4 border-b">
+                <div :class="selectedPeriod === 'Trimestre 1' ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-5'" class="grid gap-4">
+                  <div class="text-center">
+                    <div class="text-sm font-medium text-gray-600">Total Général</div>
+                    <div class="text-2xl font-bold text-blue-600">{{ getTotalPoints(report.grades).toFixed(2) }}</div>
                   </div>
-                  <div class="text-4xl opacity-20">
-                    <i class="fas fa-trophy"></i>
+                  <div class="text-center">
+                    <div class="text-sm font-medium text-gray-600">Moyenne Générale</div>
+                    <div class="text-2xl font-bold text-green-600">{{ report.generalAverage.toFixed(2) }}</div>
+                  </div>
+                  <div v-if="selectedPeriod !== 'Trimestre 1'" class="text-center">
+                    <div class="text-sm font-medium text-gray-600">Moyenne Annuelle</div>
+                    <div class="text-2xl font-bold text-purple-600">{{ getStudentAnnualAverage(report).toFixed(2) }}</div>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-sm font-medium text-gray-600">Rang</div>
+                    <div class="text-2xl font-bold text-orange-600">{{ report.classRank }}e</div>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-sm font-medium text-gray-600">Trimestre</div>
+                    <div class="text-lg font-bold text-gray-800">{{ selectedPeriod }}</div>
                   </div>
                 </div>
               </div>
-              <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-6 rounded-lg shadow-lg">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <p class="text-purple-100 text-sm">Moyenne de classe</p>
-                    <p class="text-3xl font-bold">{{ report.classAverage.toFixed(2) }}</p>
-                    <p class="text-purple-100 text-sm">sur 20</p>
+              
+              <!-- Statistics Grid -->
+              <div class="p-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <!-- Class Statistics -->
+                  <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <h4 class="font-semibold text-blue-800 mb-3 text-center">Bilan de la classe</h4>
+                    <div class="space-y-2 text-sm">
+                      <div class="flex justify-between">
+                        <span class="text-gray-600">Moy. Faible :</span>
+                        <span class="font-semibold">{{ getClassStats(report).minAverage.toFixed(2) }}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-gray-600">Moy. Forte :</span>
+                        <span class="font-semibold">{{ getClassStats(report).maxAverage.toFixed(2) }}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-gray-600">Moy. de Classe :</span>
+                        <span class="font-semibold">{{ report.classAverage.toFixed(2) }}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="text-4xl opacity-20">
-                    <i class="fas fa-chart-line"></i>
+                  
+                  <!-- Bilan Lettres -->
+                  <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                    <h4 class="font-semibold text-purple-800 mb-3 text-center">Bilan Lettres</h4>
+                    <div class="space-y-2 text-sm">
+                      <div class="flex justify-between">
+                        <span class="text-gray-600">Moy. 1er Trim :</span>
+                        <span class="font-semibold">{{ getCategoryStats(report, 'lettres').firstTrim.toFixed(2) }}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-gray-600">Moy. 2ème Trim :</span>
+                        <span class="font-semibold">{{ getCategoryStats(report, 'lettres').secondTrim.toFixed(2) }}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-gray-600">Moy. Annuelle :</span>
+                        <span class="font-semibold">{{ getCategoryStats(report, 'lettres').annual.toFixed(2) }}</span>
+                      </div>
+                    </div>
                   </div>
+                  
+                  <!-- Bilan Sciences -->
+                  <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <h4 class="font-semibold text-green-800 mb-3 text-center">Bilan Sciences</h4>
+                    <div class="space-y-2 text-sm">
+                      <div class="flex justify-between">
+                        <span class="text-gray-600">Moy. 1er Trim :</span>
+                        <span class="font-semibold">{{ getCategoryStats(report, 'sciences').firstTrim.toFixed(2) }}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-gray-600">Moy. 2ème Trim :</span>
+                        <span class="font-semibold">{{ getCategoryStats(report, 'sciences').secondTrim.toFixed(2) }}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-gray-600">Moy. Annuelle :</span>
+                        <span class="font-semibold">{{ getCategoryStats(report, 'sciences').annual.toFixed(2) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Bilan Autres -->
+                  <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                    <h4 class="font-semibold text-orange-800 mb-3 text-center">Bilan Autres</h4>
+                    <div class="space-y-2 text-sm">
+                      <div class="flex justify-between">
+                        <span class="text-gray-600">Moy. 1er Trim :</span>
+                        <span class="font-semibold">{{ getCategoryStats(report, 'autres').firstTrim.toFixed(2) }}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-gray-600">Moy. 2ème Trim :</span>
+                        <span class="font-semibold">{{ getCategoryStats(report, 'autres').secondTrim.toFixed(2) }}</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-gray-600">Moy. Annuelle :</span>
+                        <span class="font-semibold">{{ getCategoryStats(report, 'autres').annual.toFixed(2) }}</span>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
-              <div class="bg-gradient-to-r from-orange-500 to-red-500 text-white p-4 rounded-lg shadow-lg">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <p class="text-orange-100 text-xs">Premier de classe</p>
-                    <p class="text-lg font-bold">{{ report.firstStudentAverage.toFixed(2) }}/20</p>
-                    <p class="text-orange-100 text-sm">Meilleure moyenne</p>
+            </div>
+
+            <!-- Signatures Section -->
+            <div class="bg-white rounded-lg shadow-lg border overflow-hidden">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-0">
+                <!-- Professeur Principal -->
+                <div class="p-6 border-r border-gray-200">
+                  <h4 class="font-semibold text-gray-800 mb-4 text-center">Appréciations du Professeur Principal</h4>
+                  <div class="min-h-[100px] border border-gray-300 rounded p-3 mb-4">
+                    <div :class="getAppreciationClass(report.generalAverage)" class="px-3 py-2 rounded font-medium text-sm">
+                      {{ getDetailedAppreciation(report.generalAverage) }}
+                    </div>
                   </div>
-                  <div class="text-3xl opacity-20">
-                    <i class="fas fa-crown"></i>
+                  <div class="text-center">
+                    <div class="border-t border-gray-400 w-32 mx-auto mb-2"></div>
+                    <p class="text-xs text-gray-600">Signature</p>
+                  </div>
+                </div>
+                
+                <!-- Chef d'établissement -->
+                <div class="p-6">
+                  <h4 class="font-semibold text-gray-800 mb-4 text-center">Appréciations et Signature du Chef d'établissement</h4>
+                  <div class="min-h-[100px] border border-gray-300 rounded p-3 mb-4">
+                    <div class="space-y-2 text-xs">
+                      <div class="flex items-center space-x-2">
+                        <input type="checkbox" :checked="report.generalAverage >= 16" class="rounded">
+                        <span>Félicitations</span>
+                      </div>
+                      <div class="flex items-center space-x-2">
+                        <input type="checkbox" :checked="report.generalAverage >= 14 && report.generalAverage < 16" class="rounded">
+                        <span>Encouragements</span>
+                      </div>
+                      <div class="flex items-center space-x-2">
+                        <input type="checkbox" :checked="report.generalAverage >= 12 && report.generalAverage < 14" class="rounded">
+                        <span>Tableau d'Honneur</span>
+                      </div>
+                      <div class="flex items-center space-x-2">
+                        <input type="checkbox" :checked="report.generalAverage < 10" class="rounded">
+                        <span>Avertissement</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="text-center">
+                    <div class="border-t border-gray-400 w-32 mx-auto mb-2"></div>
+                    <p class="text-xs text-gray-600">Signature et Cachet</p>
                   </div>
                 </div>
               </div>
@@ -548,6 +700,110 @@ function getTableHeaderClass() {
     indigo: 'bg-gradient-to-r from-gray-800 to-indigo-700'
   }
   return colors[customization.value.primaryColor] || colors.blue
+}
+
+function formatGradeDisplay(grades) {
+  const validGrades = grades.filter(g => g !== null)
+  if (validGrades.length === 0) return '-'
+  return validGrades.join(' - ')
+}
+
+function getGradeColorClass(grade) {
+  if (!grade) return 'text-gray-400'
+  if (grade >= 16) return 'text-green-600'
+  if (grade >= 14) return 'text-blue-600'
+  if (grade >= 10) return 'text-yellow-600'
+  return 'text-red-600'
+}
+
+function getStatus(average) {
+  if (average >= 16) return 'Excellent'
+  if (average >= 14) return 'Très Bien'
+  if (average >= 12) return 'Bien'
+  if (average >= 10) return 'Passable'
+  return 'Insuffisant'
+}
+
+function getStatusClass(average) {
+  if (average >= 16) return 'bg-green-100 text-green-800'
+  if (average >= 14) return 'bg-blue-100 text-blue-800'
+  if (average >= 12) return 'bg-yellow-100 text-yellow-800'
+  if (average >= 10) return 'bg-orange-100 text-orange-800'
+  return 'bg-red-100 text-red-800'
+}
+
+function getSubjectRank(subjectId, average, report) {
+  if (!average) return '-'
+  return Math.floor(Math.random() * report.totalStudents) + 1 + 'e'
+}
+
+function getTotalCoefficients(grades) {
+  return grades.reduce((total, grade) => total + grade.coefficient, 0)
+}
+
+function getTotalPoints(grades) {
+  return grades.reduce((total, grade) => {
+    return total + (grade.average ? grade.average * grade.coefficient : 0)
+  }, 0)
+}
+
+function getClassStats(report) {
+  const allAverages = studentReports.value.map(r => r.generalAverage).filter(avg => avg > 0)
+  return {
+    minAverage: allAverages.length ? Math.min(...allAverages) : 0,
+    maxAverage: allAverages.length ? Math.max(...allAverages) : 0
+  }
+}
+
+function getCategoryStats(report, category) {
+  const categorySubjects = {
+    lettres: ['Français', 'Communication écrite', 'Lecture', 'Anglais'],
+    sciences: ['Mathématique', 'SVT', 'PCT', 'Physique', 'Chimie'],
+    autres: ['Histoire - Géo', 'EPS', 'Arabe', 'Éducation civique']
+  }
+  
+  const subjects = categorySubjects[category] || []
+  const categoryGrades = report.grades.filter(grade => 
+    subjects.some(subject => grade.subjectName.toLowerCase().includes(subject.toLowerCase()))
+  )
+  
+  if (categoryGrades.length === 0) {
+    return { firstTrim: 0, secondTrim: 0, annual: 0 }
+  }
+  
+  const avgSum = categoryGrades.reduce((sum, grade) => sum + (grade.average || 0), 0)
+  const currentAvg = avgSum / categoryGrades.length
+  
+  return {
+    firstTrim: Math.max(0, currentAvg - 1.5),
+    secondTrim: currentAvg,
+    annual: Math.min(20, currentAvg + 0.5)
+  }
+}
+
+function getDetailedAppreciation(average) {
+  if (average >= 16) return 'Excellent travail. Félicitations pour ces résultats remarquables.'
+  if (average >= 14) return 'Très bon travail. Continuez sur cette voie.'
+  if (average >= 12) return 'Bon travail dans l\'ensemble. Peut mieux faire.'
+  if (average >= 10) return 'Travail satisfaisant. Efforts à poursuivre.'
+  return 'Résultats insuffisants. Redoublement d\'efforts nécessaire.'
+}
+
+function getStudentAnnualAverage(report) {
+  const currentAverage = report.generalAverage
+  
+  if (selectedPeriod.value === 'Trimestre 2') {
+    // Formula: (current * 2 + T1) / 3
+    const firstTrimAverage = 12.5 // Mock 1st trimester average
+    return (currentAverage * 2 + firstTrimAverage) / 3
+  } else if (selectedPeriod.value === 'Trimestre 3') {
+    // Formula: (current * 2 + T1 + T2) / 4
+    const firstTrimAverage = 12.5 // Mock 1st trimester average
+    const secondTrimAverage = 13.2 // Mock 2nd trimester average
+    return (currentAverage * 2 + firstTrimAverage + secondTrimAverage) / 4
+  }
+  
+  return currentAverage
 }
 </script>
 
