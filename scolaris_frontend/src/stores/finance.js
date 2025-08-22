@@ -61,6 +61,16 @@ export const useFinanceStore = defineStore('finance', () => {
     stats.value = res.data
   }
 
+  async function addTeacherPayment(paymentData) {
+    const res = await axios.post('http://localhost:3000/api/finance/teacher-payments', paymentData)
+    return res.data
+  }
+
+  async function fetchTeacherPayments() {
+    const res = await axios.get('http://localhost:3000/api/finance/teacher-payments')
+    return res.data
+  }
+
   const totalRevenue = computed(() => {
     return payments.value.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0)
   })
@@ -80,6 +90,8 @@ export const useFinanceStore = defineStore('finance', () => {
     getPaymentHistory,
     fetchFeeTypes,
     addFeeType,
-    fetchStats
+    fetchStats,
+    addTeacherPayment,
+    fetchTeacherPayments
   }
 })

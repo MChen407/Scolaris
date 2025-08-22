@@ -6,6 +6,7 @@ import Grade from "./grades.model.js";
 import Payment from "./payment.model.js";
 import FeeType from "./feeType.model.js";
 import StudentAverage from "./studentAverage.model.js";
+import TeacherPayment from "./teacherPayment.model.js";
 
 // Student - Classe
 Student.belongsTo(Classe, { foreignKey: "classId" });
@@ -22,6 +23,10 @@ Subject.belongsToMany(Teacher, { through: "TeacherSubjects", foreignKey: "subjec
 // Teacher - Classe (Many-to-Many)
 Teacher.belongsToMany(Classe, { through: "TeacherClasses", foreignKey: "teacherId", as: "Classes" });
 Classe.belongsToMany(Teacher, { through: "TeacherClasses", foreignKey: "classId", as: "Teachers" });
+
+// Teacher - Payment
+TeacherPayment.belongsTo(Teacher, { foreignKey: "teacherId" });
+Teacher.hasMany(TeacherPayment, { foreignKey: "teacherId" });
 
 // Grade - Student, Subject, Classe
 Grade.belongsTo(Student, { foreignKey: "studentId" });
@@ -52,5 +57,6 @@ export {
   Grade,
   Payment,
   FeeType,
-  StudentAverage
+  StudentAverage,
+  TeacherPayment
 };

@@ -8,7 +8,9 @@ import {
     getPaymentHistory,
     getFinanceStats,
     getAllFeeTypes,
-    createFeeType
+    createFeeType,
+    createTeacherPayment,
+    getTeacherPayments
 } from '../controllers/finance.controller.js';
 
 const router = express.Router();
@@ -22,5 +24,7 @@ router.delete('/payments/:id', deletePayment);
 router.get('/stats', getFinanceStats);
 router.get('/fee-types', getAllFeeTypes);
 router.post('/fee-types', createFeeType);
+router.post('/teacher-payments', createTeacherPayment);
+router.get('/teacher-payments', getTeacherPayments);
 
 export default router;

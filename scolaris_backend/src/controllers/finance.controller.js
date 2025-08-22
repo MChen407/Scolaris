@@ -1,4 +1,4 @@
-import { Payment, FeeType, Student } from "../models/index.model.js";
+import { Payment, FeeType, Student, TeacherPayment, Teacher } from "../models/index.model.js";
 
 export const getAllPayments = async (req, res) => {
     try {
@@ -168,6 +168,49 @@ export const createFeeType = async (req, res) => {
         const { name } = req.body;
         const feeType = await FeeType.create({ name });
         res.status(201).json(feeType);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const createTeacherPayment = async (req, res) => {
+    try {
+        const { teacherId, hours, rate, period } = req.body;
+        
+        if (!teacherId || !hours || !rate) {
+            return res.status(400).json({ error: "Données manquantes" });
+        }
+        
+        const total = parseFloat(hours) * parseFloat(rate);
+        
+        const payment = await TeacherPayment.create({
+            teacherId: parseInt(teacherId),
+            hours: parseFloat(hours),
+            rate: parseFloat(rate),
+            total,
+            period: period || 'day',
+            date: new Date().toISOString().split('T')[0],
+            reference: `TEACH-${Date.now()}`
+        });
+        
+        const paymentWithTeacher = await TeacherPayment.findByPk(payment.id, {
+            include: [{ model: Teacher, attributes: ['firstName', 'lastName'] }]
+        });
+        
+        res.status(201).json(paymentWithTeacher);
+    } catch (error) {
+        console.error('Erreur création paiement enseignant:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getTeacherPayments = async (req, res) => {
+    try {
+        const payments = await TeacherPayment.findAll({
+            include: [{ model: Teacher, attributes: ['firstName', 'lastName'] }],
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(payments);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

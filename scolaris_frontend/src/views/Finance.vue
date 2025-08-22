@@ -204,9 +204,9 @@
               </div>
             </div>
             <div class="mt-4">
-              <button @click="processTeacherPayment" :disabled="!canProcessTeacherPayment" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <button @click="processTeacherPayment" :disabled="!canProcessTeacherPayment || processingTeacherPayment" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 <i v-if="processingTeacherPayment" class="fas fa-spinner fa-spin mr-2"></i>
-                Valider paiement ({{ calculateTeacherTotal }} CFA)
+                Valider paiement ({{ calculateTeacherTotal }})
               </button>
             </div>
           </div>
@@ -231,7 +231,7 @@
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
                 <tr v-for="payment in teacherPayments" :key="payment.id" class="hover:bg-gray-50">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ payment.teacherName }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ getTeacherName(payment) }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payment.hours }}h</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatCurrency(payment.rate) }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{{ formatCurrency(payment.total) }}</td>
@@ -414,6 +414,11 @@
                     </span>
                   </td>
                 </tr>
+                <tr v-if="paymentHistory.length === 0">
+                  <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                    Aucun paiement trouvé pour cet élève
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -442,6 +447,32 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Logo</label>
               <input @change="handleReceiptLogoUpload" type="file" accept="image/*" class="input-field">
+            </div>
+          </div>
+        </BaseModal>
+
+        <!-- Student Selection Modal -->
+        <BaseModal
+          :show="showStudentSelectModal"
+          title="Sélectionner un élève"
+          @close="showStudentSelectModal = false"
+          @confirm="loadStudentHistory"
+        >
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Rechercher un élève</label>
+              <input 
+                v-model="studentSearch" 
+                type="text" 
+                placeholder="Tapez le nom de l'élève..."
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2"
+              >
+              <select v-model="selectedStudentForHistory" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                <option value="">Sélectionner un élève</option>
+                <option v-for="student in filteredStudents" :key="student.id" :value="student.id">
+                  {{ student.firstName }} {{ student.lastName }}
+                </option>
+              </select>
             </div>
           </div>
         </BaseModal>
@@ -475,7 +506,7 @@ import { useTeachersStore } from '@/stores/teachers'
 function formatCurrency(amount) {
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'EUR',
+    currency: 'XOF',
     minimumFractionDigits: 0
   }).format(amount)
 }
@@ -514,7 +545,7 @@ const filters = ref({
 const teacherPayment = ref({
   teacherId: '',
   hours: 0,
-  period: 'day',
+  period: 'jour',
   rate: 0
 })
 
@@ -561,14 +592,17 @@ const canProcessTeacherPayment = computed(() => {
 })
 
 const calculateTeacherTotal = computed(() => {
-  return (teacherPayment.value.hours * teacherPayment.value.rate).toFixed(2)
+  const total = teacherPayment.value.hours * teacherPayment.value.rate
+  return formatCurrency(total)
 })
 
 onMounted(async () => {
   await authStore.initAuth()
   await financeStore.fetchPayments()
   await financeStore.fetchFeeTypes()
-  console.log('FeeTypes loaded:', financeStore.feeTypes)
+  await teachersStore.fetchTeachers()
+  await studentsStore.fetchStudents()
+  teacherPayments.value = await financeStore.fetchTeacherPayments()
 })
 
 function getStudentName(studentId) {
@@ -597,6 +631,17 @@ function getStatusLabel(status) {
     'overdue': 'En retard'
   }
   return labels[status] || status
+}
+
+function getTeacherName(payment) {
+  if (payment.Teacher) {
+    return `${payment.Teacher.firstName} ${payment.Teacher.lastName}`
+  }
+  if (payment.teacherName) {
+    return payment.teacherName
+  }
+  const teacher = teachersStore.getTeacherById(payment.teacherId)
+  return teacher ? `${teacher.firstName} ${teacher.lastName}` : 'Enseignant inconnu'
 }
 
 const showPaymentModal = ref(false)
@@ -660,44 +705,58 @@ function generatePDFReport() {
   alert('Génération du rapport PDF - Non implémenté')
 }
 
-async function viewPaymentHistory() {
-  const studentId = prompt('ID de l\'\u00e9lève :')
-  if (studentId) {
-    try {
-      paymentHistory.value = await financeStore.getPaymentHistory(studentId)
-      showHistoryModal.value = true
-    } catch (error) {
-      alert('Erreur lors du chargement de l\'historique')
-    }
+const showStudentSelectModal = ref(false)
+const selectedStudentForHistory = ref('')
+
+function viewPaymentHistory() {
+  showStudentSelectModal.value = true
+}
+
+async function loadStudentHistory() {
+  if (!selectedStudentForHistory.value) {
+    showError('Erreur', 'Veuillez sélectionner un élève')
+    return
+  }
+  
+  try {
+    paymentHistory.value = await financeStore.getPaymentHistory(selectedStudentForHistory.value)
+    showStudentSelectModal.value = false
+    showHistoryModal.value = true
+  } catch (error) {
+    showError('Erreur', 'Erreur lors du chargement de l\'historique')
   }
 }
 
 async function processTeacherPayment() {
-  if (!canProcessTeacherPayment.value) return
+  if (!canProcessTeacherPayment.value) {
+    showError('Erreur', 'Veuillez remplir tous les champs')
+    return
+  }
   
   processingTeacherPayment.value = true
   try {
     const totalAmount = teacherPayment.value.hours * teacherPayment.value.rate
-    const teacher = teachersStore.getTeacherById(teacherPayment.value.teacherId)
+    const teacher = teachersStore.getTeacherById(parseInt(teacherPayment.value.teacherId))
     
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Add to teacher payments history
-    const newPayment = {
-      id: Date.now(),
-      teacherId: teacherPayment.value.teacherId,
-      teacherName: `${teacher?.firstName} ${teacher?.lastName}`,
-      hours: teacherPayment.value.hours,
-      rate: teacherPayment.value.rate,
-      total: totalAmount,
-      period: teacherPayment.value.period,
-      date: new Date().toISOString().split('T')[0]
+    if (!teacher) {
+      showError('Erreur', 'Enseignant non trouvé')
+      return
     }
     
-    teacherPayments.value.push(newPayment)
+    // Enregistrement en base de données
+    const newPayment = await financeStore.addTeacherPayment({
+      teacherId: teacherPayment.value.teacherId,
+      hours: teacherPayment.value.hours,
+      rate: teacherPayment.value.rate,
+      period: teacherPayment.value.period
+    })
     
-    alert(`Paiement de ${totalAmount}CFA validé pour ${teacher?.firstName} ${teacher?.lastName}`)
+    // Recharger la liste
+    teacherPayments.value = await financeStore.fetchTeacherPayments()
     
+    showSuccess('Succès', `Paiement de ${formatCurrency(totalAmount)} validé pour ${teacher.firstName} ${teacher.lastName}`)
+    
+    // Reset form
     teacherPayment.value = {
       teacherId: '',
       hours: 0,
@@ -706,7 +765,7 @@ async function processTeacherPayment() {
     }
   } catch (error) {
     console.error('Erreur lors du paiement enseignant:', error)
-    alert('Erreur lors du traitement du paiement')
+    showError('Erreur', 'Erreur lors du traitement du paiement')
   } finally {
     processingTeacherPayment.value = false
   }
@@ -781,41 +840,118 @@ async function generatePDFReceipt() {
     const { jsPDF } = await import('jspdf')
     const doc = new jsPDF()
     
-    // Logo
+    // Background image si disponible
     if (receiptConfig.value.logoUrl) {
-      doc.addImage(receiptConfig.value.logoUrl, 'JPEG', 15, 15, 30, 30)
+      doc.addImage(receiptConfig.value.logoUrl, 'JPEG', 0, 0, 210, 297, '', 'NONE', 0.1)
     }
     
-    // En-tête
+    // Header avec bordure
+    doc.setFillColor(41, 128, 185)
+    doc.rect(20, 20, 170, 40, 'F')
+    doc.setDrawColor(0, 0, 0)
+    doc.setLineWidth(1)
+    doc.rect(20, 20, 170, 40, 'S')
+    
+    // Logo principal
+    if (receiptConfig.value.logoUrl) {
+      doc.addImage(receiptConfig.value.logoUrl, 'JPEG', 25, 25, 30, 30)
+    }
+    
+    // Informations établissement
+    doc.setTextColor(255, 255, 255)
     doc.setFontSize(18)
-    doc.text(receiptConfig.value.schoolName, 105, 25, { align: 'center' })
+    doc.setFont('helvetica', 'bold')
+    doc.text(receiptConfig.value.schoolName, 105, 35, { align: 'center' })
+    
     doc.setFontSize(10)
-    doc.text(receiptConfig.value.address, 105, 35, { align: 'center' })
-    doc.text(receiptConfig.value.phone, 105, 42, { align: 'center' })
+    doc.setFont('helvetica', 'normal')
+    doc.text(receiptConfig.value.address, 105, 45, { align: 'center' })
+    doc.text('Tel: ' + receiptConfig.value.phone, 105, 52, { align: 'center' })
+    
+    // Titre du document
+    doc.setTextColor(0, 0, 0)
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.text('RECU DE PAIEMENT', 105, 80, { align: 'center' })
+    
+    // Numéro de référence
+    doc.setFillColor(240, 240, 240)
+    doc.rect(20, 90, 170, 15, 'F')
+    doc.setDrawColor(0, 0, 0)
+    doc.rect(20, 90, 170, 15, 'S')
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Reference: ' + receiptPayment.value.reference, 105, 100, { align: 'center' })
+    
+    // Section informations - Colonne gauche
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    
+    // Labels
+    doc.setFont('helvetica', 'bold')
+    doc.text('Date:', 30, 125)
+    doc.text('Eleve:', 30, 140)
+    doc.text('Type de frais:', 30, 155)
+    doc.text('Mode de paiement:', 30, 170)
+    doc.text('Statut:', 30, 185)
+    
+    // Valeurs
+    doc.setFont('helvetica', 'normal')
+    doc.text(formatDate(receiptPayment.value.date), 80, 125)
+    doc.text(getStudentName(receiptPayment.value.studentId), 80, 140)
+    doc.text(getFeeTypeName(receiptPayment.value.feeTypeId), 80, 155)
+    doc.text(receiptPayment.value.method, 80, 170)
+    doc.text(getStatusLabel(receiptPayment.value.status), 80, 185)
+    
+    // Section montant - Colonne droite
+    doc.setFillColor(41, 128, 185)
+    doc.rect(120, 120, 60, 30, 'F')
+    doc.setDrawColor(0, 0, 0)
+    doc.rect(120, 120, 60, 30, 'S')
+    
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('MONTANT PAYE', 150, 132, { align: 'center' })
     
     doc.setFontSize(16)
-    doc.text('REÇU DE PAIEMENT', 105, 60, { align: 'center' })
+    doc.text(formatCurrency(receiptPayment.value.amount), 150, 142, { align: 'center' })
     
-    // Cadre
-    doc.rect(15, 75, 180, 100)
+    // Bordure principale
+    doc.setTextColor(0, 0, 0)
+    doc.setDrawColor(0, 0, 0)
+    doc.setLineWidth(2)
+    doc.rect(20, 115, 170, 80, 'S')
     
-    // Informations
-    doc.setFontSize(12)
-    doc.text(`Référence: ${receiptPayment.value.reference}`, 25, 90)
-    doc.text(`Date: ${formatDate(receiptPayment.value.date)}`, 25, 105)
-    doc.text(`Élève: ${getStudentName(receiptPayment.value.studentId)}`, 25, 120)
-    doc.text(`Type: ${getFeeTypeName(receiptPayment.value.feeTypeId)}`, 25, 135)
-    doc.text(`Montant: ${formatCurrency(receiptPayment.value.amount)}`, 25, 150)
-    doc.text(`Mode: ${receiptPayment.value.method}`, 25, 165)
+    // Section signature
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Signature et cachet:', 30, 215)
     
-    // Signature
-    doc.text('Signature et cachet:', 120, 200)
-    doc.rect(120, 205, 60, 30)
+    doc.setDrawColor(0, 0, 0)
+    doc.setLineWidth(1)
+    doc.rect(30, 220, 80, 40, 'S')
     
-    doc.save(`recu_${receiptPayment.value.reference}.pdf`)
+    // Date de génération
+    doc.text('Date de generation:', 120, 215)
+    doc.setFont('helvetica', 'normal')
+    doc.text(new Date().toLocaleDateString('fr-FR'), 120, 225)
+    
+    // Footer
+    doc.setFontSize(8)
+    doc.setTextColor(100, 100, 100)
+    doc.text('Ce recu fait foi de paiement', 105, 280, { align: 'center' })
+    
+    // Bordure générale
+    doc.setDrawColor(0, 0, 0)
+    doc.setLineWidth(3)
+    doc.rect(15, 15, 180, 270, 'S')
+    
+    doc.save('recu_' + receiptPayment.value.reference + '.pdf')
     showReceiptModal.value = false
+    showSuccess('Succes', 'Recu PDF genere avec succes')
   } catch (error) {
-    alert('Erreur lors de la génération du PDF')
+    showError('Erreur', 'Erreur lors de la generation du PDF')
   }
 }
 
