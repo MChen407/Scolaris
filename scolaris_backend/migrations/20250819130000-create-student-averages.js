@@ -2,7 +2,7 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('Payments', {
+    await queryInterface.createTable('StudentAverages', {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -19,34 +19,20 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
       },
-      feeTypeId: {
+      period: {
+        type: Sequelize.STRING,
+        allowNull: false
+      },
+      generalAverage: {
+        type: Sequelize.DECIMAL(4, 2),
+        allowNull: false
+      },
+      totalPoints: {
+        type: Sequelize.DECIMAL(6, 2),
+        allowNull: false
+      },
+      totalCoefficients: {
         type: Sequelize.INTEGER,
-        allowNull: false,
-        references: {
-          model: 'FeeTypes',
-          key: 'id'
-        },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
-      },
-      amount: {
-        type: Sequelize.FLOAT,
-        allowNull: false
-      },
-      date: {
-        type: Sequelize.DATEONLY,
-        allowNull: false
-      },
-      method: {
-        type: Sequelize.STRING,
-        allowNull: false
-      },
-      reference: {
-        type: Sequelize.STRING,
-        allowNull: false
-      },
-      status: {
-        type: Sequelize.ENUM("completed", "pending", "cancelled", "overdue"),
         allowNull: false
       },
       createdAt: {
@@ -63,6 +49,6 @@ module.exports = {
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('Payments');
+    await queryInterface.dropTable('StudentAverages');
   }
 };

@@ -13,14 +13,6 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false
       },
-      amount: {
-        type: Sequelize.FLOAT,
-        allowNull: false
-      },
-      dueDate: {
-        type: Sequelize.DATEONLY,
-        allowNull: true
-      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,

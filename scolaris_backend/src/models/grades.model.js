@@ -51,6 +51,10 @@ const Grade = sequelize.define('Grades', {
   type: {
     type: DataTypes.ENUM('Devoir', 'Interro'),
     allowNull: false
+  },
+  index: {
+    type: DataTypes.INTEGER,
+    allowNull: true
   }
 }, {
   tableName: 'Grades',

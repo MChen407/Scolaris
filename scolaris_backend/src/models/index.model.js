@@ -5,6 +5,7 @@ import Teacher from "./teacher.model.js";
 import Grade from "./grades.model.js";
 import Payment from "./payment.model.js";
 import FeeType from "./feeType.model.js";
+import StudentAverage from "./studentAverage.model.js";
 
 // Student - Classe
 Student.belongsTo(Classe, { foreignKey: "classId" });
@@ -39,6 +40,10 @@ Student.hasMany(Payment, { foreignKey: "studentId" });
 Payment.belongsTo(FeeType, { foreignKey: "feeTypeId" });
 FeeType.hasMany(Payment, { foreignKey: "feeTypeId" });
 
+// StudentAverage - Student
+StudentAverage.belongsTo(Student, { foreignKey: "studentId" });
+Student.hasMany(StudentAverage, { foreignKey: "studentId" });
+
 export {
   Student,
   Classe,
@@ -46,5 +51,6 @@ export {
   Teacher,
   Grade,
   Payment,
-  FeeType
+  FeeType,
+  StudentAverage
 };

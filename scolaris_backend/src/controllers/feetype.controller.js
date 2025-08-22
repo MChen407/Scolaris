@@ -6,19 +6,19 @@ export const getAllFeeTypes = async (req, res) => {
 }
 
 export const createFeeType = async (req, res) => {
-    const {name, amount, dueDate} = req.body;
-    const feeType = await FeeType.create({name, amount, dueDate});
+    const {name} = req.body;
+    const feeType = await FeeType.create({name});
     res.status(201).json(feeType);
 }
 
 export const updateFeeType = async (req, res) => {
     const {id} = req.params;
-    const {name, amount, dueDate} = req.body;
+    const {name} = req.body;
     const feeType = await FeeType.findByPk(id);
     if(!feeType) {
         return res.status(404).json({error: "Type de payement non trouvé"});
     }
-    await feeType.update({name, amount, dueDate});
+    await feeType.update({name});
     res.json(feeType);
 }
 

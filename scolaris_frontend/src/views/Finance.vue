@@ -139,11 +139,17 @@
                     </span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button @click="viewPayment(payment)" class="text-blue-600 hover:text-blue-900 mr-3">
+                    <button @click="viewPayment(payment)" class="text-blue-600 hover:text-blue-900 mr-2" title="Voir">
                       <i class="fas fa-eye"></i>
                     </button>
-                    <button @click="editPayment(payment)" class="text-yellow-600 hover:text-yellow-900">
+                    <button @click="editPayment(payment)" class="text-yellow-600 hover:text-yellow-900 mr-2" title="Modifier">
                       <i class="fas fa-edit"></i>
+                    </button>
+                    <button @click="confirmDelete(payment)" class="text-red-600 hover:text-red-900 mr-2" title="Supprimer">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                    <button @click="openReceiptConfig(payment)" class="text-green-600 hover:text-green-900" title="Générer reçu">
+                      <i class="fas fa-file-pdf"></i>
                     </button>
                   </td>
                 </tr>
@@ -193,14 +199,14 @@
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Montant/heure (€)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Montant/heure (CFA)</label>
                 <input v-model.number="teacherPayment.rate" type="number" placeholder="Montant" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
               </div>
             </div>
             <div class="mt-4">
               <button @click="processTeacherPayment" :disabled="!canProcessTeacherPayment" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 <i v-if="processingTeacherPayment" class="fas fa-spinner fa-spin mr-2"></i>
-                Valider paiement ({{ calculateTeacherTotal }} €)
+                Valider paiement ({{ calculateTeacherTotal }} CFA)
               </button>
             </div>
           </div>
@@ -273,6 +279,12 @@
                   {{ feeType.name }}
                 </option>
               </select>
+              <div v-if="financeStore.feeTypes.length === 0" class="text-red-500 text-sm mt-1">
+                Aucun type de frais disponible
+                <button @click="financeStore.fetchFeeTypes()" class="ml-2 text-blue-600 underline">
+                  Recharger
+                </button>
+              </div>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Montant</label>
@@ -307,6 +319,142 @@
             </div>
           </div>
         </BaseModal>
+
+        <!-- Payment Details Modal -->
+        <BaseModal
+          :show="showPaymentModal"
+          title="Détails du Paiement"
+          :show-footer="false"
+          @close="showPaymentModal = false"
+        >
+          <div v-if="selectedPayment" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div><strong>Référence:</strong> {{ selectedPayment.reference }}</div>
+              <div><strong>Date:</strong> {{ formatDate(selectedPayment.date) }}</div>
+              <div><strong>Élève:</strong> {{ getStudentName(selectedPayment.studentId) }}</div>
+              <div><strong>Type:</strong> {{ getFeeTypeName(selectedPayment.feeTypeId) }}</div>
+              <div><strong>Montant:</strong> {{ formatCurrency(selectedPayment.amount) }}</div>
+              <div><strong>Mode:</strong> {{ selectedPayment.method }}</div>
+              <div><strong>Statut:</strong> 
+                <span :class="getStatusClass(selectedPayment.status)" class="px-2 py-1 rounded text-xs">
+                  {{ getStatusLabel(selectedPayment.status) }}
+                </span>
+              </div>
+            </div>
+            <div class="pt-4 border-t">
+              <button @click="openReceiptConfig(selectedPayment)" class="btn-primary">
+                <i class="fas fa-file-pdf mr-2"></i>
+                Générer Reçu PDF
+              </button>
+            </div>
+          </div>
+        </BaseModal>
+
+        <!-- Edit Payment Modal -->
+        <BaseModal
+          :show="showEditPaymentModal"
+          title="Modifier le Paiement"
+          @close="showEditPaymentModal = false; editingPayment = null"
+          @confirm="savePayment"
+          :loading="savingPayment"
+        >
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Montant</label>
+              <input v-model.number="paymentForm.amount" type="number" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Mode de paiement</label>
+              <select v-model="paymentForm.method" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                <option value="Espèces">Espèces</option>
+                <option value="Chèque">Chèque</option>
+                <option value="Virement">Virement</option>
+                <option value="Mobile Money">Mobile Money</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Statut</label>
+              <select v-model="paymentForm.status" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                <option value="completed">Payé</option>
+                <option value="pending">En attente</option>
+                <option value="overdue">En retard</option>
+              </select>
+            </div>
+          </div>
+        </BaseModal>
+
+        <!-- Payment History Modal -->
+        <BaseModal
+          :show="showHistoryModal"
+          title="Historique des Paiements"
+          :show-footer="false"
+          @close="showHistoryModal = false"
+          class="max-w-4xl"
+        >
+          <div class="overflow-x-auto">
+            <table class="min-w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Référence</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                <tr v-for="payment in paymentHistory" :key="payment.id">
+                  <td class="px-4 py-2 text-sm">{{ payment.reference }}</td>
+                  <td class="px-4 py-2 text-sm">{{ getFeeTypeName(payment.feeTypeId) }}</td>
+                  <td class="px-4 py-2 text-sm font-medium">{{ formatCurrency(payment.amount) }}</td>
+                  <td class="px-4 py-2 text-sm">{{ formatDate(payment.date) }}</td>
+                  <td class="px-4 py-2">
+                    <span :class="getStatusClass(payment.status)" class="px-2 py-1 rounded text-xs">
+                      {{ getStatusLabel(payment.status) }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </BaseModal>
+
+        <!-- Receipt Configuration Modal -->
+        <BaseModal
+          :show="showReceiptModal"
+          title="Configuration du Reçu"
+          @close="showReceiptModal = false"
+          @confirm="generatePDFReceipt"
+        >
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nom de l'établissement</label>
+              <input v-model="receiptConfig.schoolName" type="text" class="input-field">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+              <input v-model="receiptConfig.address" type="text" class="input-field">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+              <input v-model="receiptConfig.phone" type="text" class="input-field">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Logo</label>
+              <input @change="handleReceiptLogoUpload" type="file" accept="image/*" class="input-field">
+            </div>
+          </div>
+        </BaseModal>
+
+        <!-- Alert Modal -->
+        <AlertModal
+          :show="showAlert"
+          :type="alertConfig.type"
+          :title="alertConfig.title"
+          :message="alertConfig.message"
+          @close="closeAlert"
+          @confirm="confirmAlert"
+        />
       </main>
     </div>
   </div>
@@ -317,6 +465,8 @@ import { ref, computed, onMounted } from 'vue'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
+import AlertModal from '@/components/common/AlertModal.vue'
+import { useAlert } from '@/composables/useAlert'
 import { useFinanceStore } from '@/stores/finance'
 import { useStudentsStore } from '@/stores/students'
 import { useAuthStore } from '@/stores/auth'
@@ -416,6 +566,9 @@ const calculateTeacherTotal = computed(() => {
 
 onMounted(async () => {
   await authStore.initAuth()
+  await financeStore.fetchPayments()
+  await financeStore.fetchFeeTypes()
+  console.log('FeeTypes loaded:', financeStore.feeTypes)
 })
 
 function getStudentName(studentId) {
@@ -446,12 +599,51 @@ function getStatusLabel(status) {
   return labels[status] || status
 }
 
-function viewPayment(payment) {
-  console.log('View payment:', payment)
+const showPaymentModal = ref(false)
+const showEditPaymentModal = ref(false)
+const showHistoryModal = ref(false)
+const selectedPayment = ref(null)
+const paymentHistory = ref([])
+const editingPayment = ref(null)
+
+async function viewPayment(payment) {
+  try {
+    selectedPayment.value = await financeStore.getPaymentById(payment.id)
+    showPaymentModal.value = true
+  } catch (error) {
+    alert('Erreur lors du chargement du paiement')
+  }
 }
 
 function editPayment(payment) {
-  console.log('Edit payment:', payment)
+  editingPayment.value = payment
+  paymentForm.value = {
+    studentId: payment.studentId,
+    feeTypeId: payment.feeTypeId,
+    amount: payment.amount,
+    method: payment.method,
+    status: payment.status
+  }
+  showEditPaymentModal.value = true
+}
+
+const { showAlert, alertConfig, showSuccess, showError, showConfirm, closeAlert, confirmAlert } = useAlert()
+
+function confirmDelete(payment) {
+  showConfirm(
+    'Supprimer le paiement',
+    `Êtes-vous sûr de vouloir supprimer le paiement ${payment.reference} ?`,
+    () => deletePayment(payment)
+  )
+}
+
+async function deletePayment(payment) {
+  try {
+    await financeStore.deletePayment(payment.id)
+    showSuccess('Succès', 'Paiement supprimé avec succès')
+  } catch (error) {
+    showError('Erreur', 'Erreur lors de la suppression')
+  }
 }
 
 function applyFilters() {
@@ -468,8 +660,16 @@ function generatePDFReport() {
   alert('Génération du rapport PDF - Non implémenté')
 }
 
-function viewPaymentHistory() {
-  alert('Historique des paiements - Non implémenté')
+async function viewPaymentHistory() {
+  const studentId = prompt('ID de l\'\u00e9lève :')
+  if (studentId) {
+    try {
+      paymentHistory.value = await financeStore.getPaymentHistory(studentId)
+      showHistoryModal.value = true
+    } catch (error) {
+      alert('Erreur lors du chargement de l\'historique')
+    }
+  }
 }
 
 async function processTeacherPayment() {
@@ -496,7 +696,7 @@ async function processTeacherPayment() {
     
     teacherPayments.value.push(newPayment)
     
-    alert(`Paiement de ${totalAmount}€ validé pour ${teacher?.firstName} ${teacher?.lastName}`)
+    alert(`Paiement de ${totalAmount}CFA validé pour ${teacher?.firstName} ${teacher?.lastName}`)
     
     teacherPayment.value = {
       teacherId: '',
@@ -525,16 +725,97 @@ function closePaymentModal() {
 }
 
 async function savePayment() {
+  // Validation
+  if (!paymentForm.value.studentId || !paymentForm.value.feeTypeId || !paymentForm.value.amount) {
+    showError('Erreur', 'Veuillez remplir tous les champs obligatoires')
+    return
+  }
+  
   savingPayment.value = true
   try {
-    await financeStore.addPayment({ ...paymentForm.value })
-    closePaymentModal()
-    alert('Paiement enregistré avec succès!')
+    if (editingPayment.value) {
+      await financeStore.updatePayment(editingPayment.value.id, { ...paymentForm.value })
+      showEditPaymentModal.value = false
+      editingPayment.value = null
+      showSuccess('Succès', 'Paiement modifié avec succès!')
+    } else {
+      await financeStore.addPayment({ ...paymentForm.value })
+      closePaymentModal()
+      showSuccess('Succès', 'Paiement enregistré avec succès!')
+    }
   } catch (error) {
     console.error('Erreur:', error)
-    alert('Erreur lors de l\'enregistrement du paiement')
+    showError('Erreur', error.response?.data?.error || 'Erreur lors de l\'enregistrement du paiement')
   } finally {
     savingPayment.value = false
+  }
+}
+
+const showReceiptModal = ref(false)
+const receiptPayment = ref(null)
+const receiptConfig = ref({
+  schoolName: 'ÉTABLISSEMENT SCOLAIRE',
+  address: 'Adresse de l\'\u00e9cole',
+  phone: 'Téléphone',
+  logoUrl: ''
+})
+
+function openReceiptConfig(payment) {
+  receiptPayment.value = payment
+  showReceiptModal.value = true
+}
+
+function handleReceiptLogoUpload(event) {
+  const file = event.target.files[0]
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      receiptConfig.value.logoUrl = e.target.result
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+async function generatePDFReceipt() {
+  try {
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF()
+    
+    // Logo
+    if (receiptConfig.value.logoUrl) {
+      doc.addImage(receiptConfig.value.logoUrl, 'JPEG', 15, 15, 30, 30)
+    }
+    
+    // En-tête
+    doc.setFontSize(18)
+    doc.text(receiptConfig.value.schoolName, 105, 25, { align: 'center' })
+    doc.setFontSize(10)
+    doc.text(receiptConfig.value.address, 105, 35, { align: 'center' })
+    doc.text(receiptConfig.value.phone, 105, 42, { align: 'center' })
+    
+    doc.setFontSize(16)
+    doc.text('REÇU DE PAIEMENT', 105, 60, { align: 'center' })
+    
+    // Cadre
+    doc.rect(15, 75, 180, 100)
+    
+    // Informations
+    doc.setFontSize(12)
+    doc.text(`Référence: ${receiptPayment.value.reference}`, 25, 90)
+    doc.text(`Date: ${formatDate(receiptPayment.value.date)}`, 25, 105)
+    doc.text(`Élève: ${getStudentName(receiptPayment.value.studentId)}`, 25, 120)
+    doc.text(`Type: ${getFeeTypeName(receiptPayment.value.feeTypeId)}`, 25, 135)
+    doc.text(`Montant: ${formatCurrency(receiptPayment.value.amount)}`, 25, 150)
+    doc.text(`Mode: ${receiptPayment.value.method}`, 25, 165)
+    
+    // Signature
+    doc.text('Signature et cachet:', 120, 200)
+    doc.rect(120, 205, 60, 30)
+    
+    doc.save(`recu_${receiptPayment.value.reference}.pdf`)
+    showReceiptModal.value = false
+  } catch (error) {
+    alert('Erreur lors de la génération du PDF')
   }
 }
 

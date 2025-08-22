@@ -8,7 +8,7 @@ const Payment = sequelize.define("Payments", {
   date: { type: DataTypes.DATEONLY, allowNull: false },
   method: { type: DataTypes.STRING, allowNull: false },
   reference: { type: DataTypes.STRING, allowNull: false },
-  status: { type: DataTypes.ENUM("completed", "pending", "cancelled"), allowNull: false }
+  status: { type: DataTypes.ENUM("completed", "pending", "cancelled", "overdue"), allowNull: false },
 });
 
 export default Payment;

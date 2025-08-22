@@ -60,26 +60,45 @@
         <!-- Customization Panel -->
         <div v-if="showCustomization" class="card">
           <h3 class="text-lg font-semibold text-gray-900 mb-4">Personnalisation du Bulletin</h3>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Couleur principale</label>
-              <select v-model="customization.primaryColor" class="input-field">
-                <option value="blue">Bleu</option>
-                <option value="green">Vert</option>
-                <option value="purple">Violet</option>
-                <option value="red">Rouge</option>
-                <option value="indigo">Indigo</option>
-              </select>
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Couleur principale</label>
+                <select v-model="customization.primaryColor" class="input-field">
+                  <option value="blue">Bleu</option>
+                  <option value="green">Vert</option>
+                  <option value="purple">Violet</option>
+                  <option value="red">Rouge</option>
+                  <option value="indigo">Indigo</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nom de l'école</label>
+                <input v-model="customization.schoolName" type="text" class="input-field" placeholder="Nom de l'école">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Année scolaire</label>
+                <input v-model="customization.schoolYear" type="text" class="input-field" placeholder="2023-2024">
+              </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Nom de l'école</label>
-              <input v-model="customization.schoolName" type="text" class="input-field" placeholder="Nom de l'école">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Texte additionnel</label>
+              <input v-model="customization.additionalText" type="text" class="input-field" placeholder="Texte supplémentaire (optionnel)">
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Logo</label>
-              <input @change="handleLogoUpload" type="file" accept="image/*" class="input-field">
-              <div v-if="customization.logoUrl" class="mt-2">
-                <img :src="customization.logoUrl" alt="Logo" class="h-12 w-auto border rounded">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Logo gauche</label>
+                <input @change="handleLeftLogoUpload" type="file" accept="image/*" class="input-field">
+                <div v-if="customization.leftLogoUrl" class="mt-2">
+                  <img :src="customization.leftLogoUrl" alt="Logo gauche" class="h-12 w-auto border rounded">
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Logo droite</label>
+                <input @change="handleRightLogoUpload" type="file" accept="image/*" class="input-field">
+                <div v-if="customization.rightLogoUrl" class="mt-2">
+                  <img :src="customization.rightLogoUrl" alt="Logo droite" class="h-12 w-auto border rounded">
+                </div>
               </div>
             </div>
           </div>
@@ -90,9 +109,10 @@
           <div
             v-for="report in studentReports"
             :key="report.student.id"
+            :data-student-id="report.student.id"
             class="card"
           >
-            <div class="flex justify-between items-start mb-4">
+            <div class="flex justify-between items-start mb-4 no-print">
               <div>
                 <h3 class="text-lg font-semibold text-gray-900">
                   {{ report.student.firstName }} {{ report.student.lastName }}
@@ -105,9 +125,10 @@
                 <button
                   @click="exportToPDF(report)"
                   class="btn-secondary"
+                  :disabled="isExporting"
                 >
                   <i class="fas fa-download mr-2"></i>
-                  PDF
+                  {{ isExporting ? 'Export...' : 'PDF' }}
                 </button>
                 <button
                   @click="printReport(report)"
@@ -124,15 +145,18 @@
               <!-- School Header -->
               <div :class="getHeaderClass()" class="text-white p-6">
                 <div class="flex items-center justify-between">
-                  <div v-if="customization.logoUrl" class="flex-shrink-0">
-                    <img :src="customization.logoUrl" alt="Logo" class="h-16 w-16 rounded-full border-2 border-white">
+                  <div class="flex-shrink-0 w-20">
+                    <img v-if="customization.leftLogoUrl" :src="customization.leftLogoUrl" alt="Logo gauche" class="h-16 w-16 rounded-full border-2 border-white mx-auto">
                   </div>
-                  <div class="text-center flex-1">
+                  <div class="text-center flex-1 px-4">
                     <h1 class="text-2xl font-bold mb-1">{{ customization.schoolName || 'ÉTABLISSEMENT SCOLAIRE' }}</h1>
                     <p class="text-lg font-semibold opacity-90">BULLETIN DE NOTES DU {{ selectedPeriod.toUpperCase() }}</p>
-                    <p class="text-sm opacity-80">Année Scolaire 2023-2024</p>
+                    <p class="text-sm opacity-80">Année Scolaire {{ customization.schoolYear }}</p>
+                    <p v-if="customization.additionalText" class="text-sm opacity-75 mt-1">{{ customization.additionalText }}</p>
                   </div>
-                  <div class="flex-shrink-0 w-16"></div>
+                  <div class="flex-shrink-0 w-20">
+                    <img v-if="customization.rightLogoUrl" :src="customization.rightLogoUrl" alt="Logo droite" class="h-16 w-16 rounded-full border-2 border-white mx-auto">
+                  </div>
                 </div>
               </div>
               
@@ -307,7 +331,7 @@
             <div class="bg-white rounded-lg shadow-lg border overflow-hidden">
               <!-- General Average Section -->
               <div class="bg-gray-100 p-4 border-b">
-                <div :class="selectedPeriod === 'Trimestre 1' ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-5'" class="grid gap-4">
+                <div :class="selectedPeriod === 'Trimestre 1' ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-6'" class="grid gap-4">
                   <div class="text-center">
                     <div class="text-sm font-medium text-gray-600">Total Général</div>
                     <div class="text-2xl font-bold text-blue-600">{{ getTotalPoints(report.grades).toFixed(2) }}</div>
@@ -318,11 +342,15 @@
                   </div>
                   <div v-if="selectedPeriod !== 'Trimestre 1'" class="text-center">
                     <div class="text-sm font-medium text-gray-600">Moyenne Annuelle</div>
-                    <div class="text-2xl font-bold text-purple-600">{{ getStudentAnnualAverage(report).toFixed(2) }}</div>
+                    <div class="text-2xl font-bold text-purple-600">{{ report.annualAverage?.toFixed(2) || '0.00' }}</div>
                   </div>
                   <div class="text-center">
-                    <div class="text-sm font-medium text-gray-600">Rang</div>
+                    <div class="text-sm font-medium text-gray-600">Rang {{ selectedPeriod }}</div>
                     <div class="text-2xl font-bold text-orange-600">{{ report.classRank }}e</div>
+                  </div>
+                  <div v-if="selectedPeriod !== 'Trimestre 1'" class="text-center">
+                    <div class="text-sm font-medium text-gray-600">Rang Annuel</div>
+                    <div class="text-2xl font-bold text-red-600">{{ report.annualRank }}e</div>
                   </div>
                   <div class="text-center">
                     <div class="text-sm font-medium text-gray-600">Trimestre</div>
@@ -359,15 +387,15 @@
                     <div class="space-y-2 text-sm">
                       <div class="flex justify-between">
                         <span class="text-gray-600">Moy. 1er Trim :</span>
-                        <span class="font-semibold">{{ getCategoryStats(report, 'lettres').firstTrim.toFixed(2) }}</span>
+                        <span class="font-semibold">{{ report.categoryStats?.lettres?.firstTrim?.toFixed(2) || '0.00' }}</span>
                       </div>
                       <div class="flex justify-between">
                         <span class="text-gray-600">Moy. 2ème Trim :</span>
-                        <span class="font-semibold">{{ getCategoryStats(report, 'lettres').secondTrim.toFixed(2) }}</span>
+                        <span class="font-semibold">{{ report.categoryStats?.lettres?.secondTrim?.toFixed(2) || '0.00' }}</span>
                       </div>
                       <div class="flex justify-between">
                         <span class="text-gray-600">Moy. Annuelle :</span>
-                        <span class="font-semibold">{{ getCategoryStats(report, 'lettres').annual.toFixed(2) }}</span>
+                        <span class="font-semibold">{{ report.categoryStats?.lettres?.annual?.toFixed(2) || '0.00' }}</span>
                       </div>
                     </div>
                   </div>
@@ -378,15 +406,15 @@
                     <div class="space-y-2 text-sm">
                       <div class="flex justify-between">
                         <span class="text-gray-600">Moy. 1er Trim :</span>
-                        <span class="font-semibold">{{ getCategoryStats(report, 'sciences').firstTrim.toFixed(2) }}</span>
+                        <span class="font-semibold">{{ report.categoryStats?.sciences?.firstTrim?.toFixed(2) || '0.00' }}</span>
                       </div>
                       <div class="flex justify-between">
                         <span class="text-gray-600">Moy. 2ème Trim :</span>
-                        <span class="font-semibold">{{ getCategoryStats(report, 'sciences').secondTrim.toFixed(2) }}</span>
+                        <span class="font-semibold">{{ report.categoryStats?.sciences?.secondTrim?.toFixed(2) || '0.00' }}</span>
                       </div>
                       <div class="flex justify-between">
                         <span class="text-gray-600">Moy. Annuelle :</span>
-                        <span class="font-semibold">{{ getCategoryStats(report, 'sciences').annual.toFixed(2) }}</span>
+                        <span class="font-semibold">{{ report.categoryStats?.sciences?.annual?.toFixed(2) || '0.00' }}</span>
                       </div>
                     </div>
                   </div>
@@ -397,15 +425,15 @@
                     <div class="space-y-2 text-sm">
                       <div class="flex justify-between">
                         <span class="text-gray-600">Moy. 1er Trim :</span>
-                        <span class="font-semibold">{{ getCategoryStats(report, 'autres').firstTrim.toFixed(2) }}</span>
+                        <span class="font-semibold">{{ report.categoryStats?.autres?.firstTrim?.toFixed(2) || '0.00' }}</span>
                       </div>
                       <div class="flex justify-between">
                         <span class="text-gray-600">Moy. 2ème Trim :</span>
-                        <span class="font-semibold">{{ getCategoryStats(report, 'autres').secondTrim.toFixed(2) }}</span>
+                        <span class="font-semibold">{{ report.categoryStats?.autres?.secondTrim?.toFixed(2) || '0.00' }}</span>
                       </div>
                       <div class="flex justify-between">
                         <span class="text-gray-600">Moy. Annuelle :</span>
-                        <span class="font-semibold">{{ getCategoryStats(report, 'autres').annual.toFixed(2) }}</span>
+                        <span class="font-semibold">{{ report.categoryStats?.autres?.annual?.toFixed(2) || '0.00' }}</span>
                       </div>
                     </div>
                   </div>
@@ -416,46 +444,56 @@
 
             <!-- Signatures Section -->
             <div class="bg-white rounded-lg shadow-lg border overflow-hidden">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-0">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-0">
                 <!-- Professeur Principal -->
-                <div class="p-6 border-r border-gray-200">
-                  <h4 class="font-semibold text-gray-800 mb-4 text-center">Appréciations du Professeur Principal</h4>
-                  <div class="min-h-[100px] border border-gray-300 rounded p-3 mb-4">
-                    <div :class="getAppreciationClass(report.generalAverage)" class="px-3 py-2 rounded font-medium text-sm">
-                      {{ getDetailedAppreciation(report.generalAverage) }}
-                    </div>
+                <div class="p-4 border-r border-gray-200">
+                  <h4 class="font-semibold text-gray-800 mb-3 text-center text-sm">Appréciations du Professeur Principal</h4>
+                  <div class="min-h-[80px] border border-gray-300 p-2 mb-3 text-xs">
+                    <!-- {{ getDetailedAppreciation(report.generalAverage) }} -->
                   </div>
                   <div class="text-center">
-                    <div class="border-t border-gray-400 w-32 mx-auto mb-2"></div>
+                    <div class="border-t border-gray-400 w-24 mx-auto mb-1"></div>
                     <p class="text-xs text-gray-600">Signature</p>
                   </div>
                 </div>
                 
+                <!-- Mentions du Conseil des Professeurs -->
+                <div class="p-4 border-r border-gray-200">
+                  <h4 class="font-semibold text-gray-800 mb-3 text-center text-sm">Mentions du Conseil des Professeurs</h4>
+                  <div class="space-y-1 text-xs">
+                    <div class="flex items-center space-x-2">
+                      <input type="checkbox" :checked="report.generalAverage >= 16" class="rounded text-xs">
+                      <span>Félicitations</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <input type="checkbox" :checked="report.generalAverage >= 14 && report.generalAverage < 16" class="rounded text-xs">
+                      <span>Encouragements</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <input type="checkbox" :checked="report.generalAverage >= 12 && report.generalAverage < 14" class="rounded text-xs">
+                      <span>Tableau d'Honneur</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <input type="checkbox" :checked="report.generalAverage < 10" class="rounded text-xs">
+                      <span>Avertissement</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <input type="checkbox" :checked="report.generalAverage < 8" class="rounded text-xs">
+                      <span>Blâme</span>
+                    </div>
+                  </div>
+                </div>
+                
                 <!-- Chef d'établissement -->
-                <div class="p-6">
-                  <h4 class="font-semibold text-gray-800 mb-4 text-center">Appréciations et Signature du Chef d'établissement</h4>
-                  <div class="min-h-[100px] border border-gray-300 rounded p-3 mb-4">
-                    <div class="space-y-2 text-xs">
-                      <div class="flex items-center space-x-2">
-                        <input type="checkbox" :checked="report.generalAverage >= 16" class="rounded">
-                        <span>Félicitations</span>
-                      </div>
-                      <div class="flex items-center space-x-2">
-                        <input type="checkbox" :checked="report.generalAverage >= 14 && report.generalAverage < 16" class="rounded">
-                        <span>Encouragements</span>
-                      </div>
-                      <div class="flex items-center space-x-2">
-                        <input type="checkbox" :checked="report.generalAverage >= 12 && report.generalAverage < 14" class="rounded">
-                        <span>Tableau d'Honneur</span>
-                      </div>
-                      <div class="flex items-center space-x-2">
-                        <input type="checkbox" :checked="report.generalAverage < 10" class="rounded">
-                        <span>Avertissement</span>
-                      </div>
+                <div class="p-4">
+                  <h4 class="font-semibold text-gray-800 mb-3 text-center text-sm">Appréciations et Signature du Chef d'établissement</h4>
+                  <div class="min-h-[80px] border border-gray-300 p-2 mb-3">
+                    <div class="text-xs text-gray-500">
+                      <!-- Espace réservé aux observations du Chef d'établissement -->
                     </div>
                   </div>
                   <div class="text-center">
-                    <div class="border-t border-gray-400 w-32 mx-auto mb-2"></div>
+                    <div class="border-t border-gray-400 w-24 mx-auto mb-1"></div>
                     <p class="text-xs text-gray-600">Signature et Cachet</p>
                   </div>
                 </div>
@@ -482,6 +520,8 @@ import { useStudentsStore } from '@/stores/students'
 import { useClassesStore } from '@/stores/classes'
 import { useSubjectsStore } from '@/stores/subjects'
 import { useAuthStore } from '@/stores/auth'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 
 const sidebarCollapsed = ref(false)
 const gradesStore = useGradesStore()
@@ -494,18 +534,33 @@ const selectedClassId = ref('')
 const selectedPeriod = ref('')
 const studentReports = ref([])
 const showCustomization = ref(false)
+const isExporting = ref(false)
 const customization = ref({
   primaryColor: 'blue',
   schoolName: '',
-  logoUrl: ''
+  schoolYear: '2023-2024',
+  additionalText: '',
+  leftLogoUrl: '',
+  rightLogoUrl: ''
 })
 
-function handleLogoUpload(event) {
+function handleLeftLogoUpload(event) {
   const file = event.target.files[0]
   if (file) {
     const reader = new FileReader()
     reader.onload = (e) => {
-      customization.value.logoUrl = e.target.result
+      customization.value.leftLogoUrl = e.target.result
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+function handleRightLogoUpload(event) {
+  const file = event.target.files[0]
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      customization.value.rightLogoUrl = e.target.result
     }
     reader.readAsDataURL(file)
   }
@@ -515,7 +570,7 @@ onMounted(() => {
   authStore.initAuth()
 })
 
-function generateReports() {
+async function generateReports() {
   if (!selectedPeriod.value) return
 
   const students = selectedClassId.value 
@@ -525,86 +580,58 @@ function generateReports() {
   const reports = []
   const classBestAverages = {}
 
-  students.forEach(student => {
-    const studentGrades = gradesStore.getGradesByStudent(student.id, selectedPeriod.value)
-    
-    if (studentGrades.length === 0) return
-
-    // Group grades by subject
-    const subjectGrades = {}
-    studentGrades.forEach(grade => {
-      if (!subjectGrades[grade.subjectId]) {
-        subjectGrades[grade.subjectId] = {
-          subjectId: grade.subjectId,
-          subjectName: getSubjectName(grade.subjectId),
-          coefficient: getSubjectCoefficient(grade.subjectId),
-          interros: [null, null, null],
-          devoirs: [null, null]
+  for (const student of students) {
+    try {
+      const bulletinData = await gradesStore.getBulletinData(student.id, selectedPeriod.value)
+      
+      if (bulletinData.length === 0) continue
+      
+      // Calculer la moyenne générale
+      let totalPoints = 0
+      let totalCoefficients = 0
+      
+      bulletinData.forEach(subject => {
+        if (subject.subjectAvg !== null) {
+          totalPoints += subject.subjectAvg * subject.coefficient
+          totalCoefficients += subject.coefficient
         }
-      }
-      if (grade.type === 'Interro' && grade.index !== undefined && grade.index < 3) {
-        subjectGrades[grade.subjectId].interros[grade.index] = grade.grade
-      }
-      if (grade.type === 'Devoir' && grade.index !== undefined && grade.index < 2) {
-        subjectGrades[grade.subjectId].devoirs[grade.index] = grade.grade
-      }
-    })
-
-    // Calculate averages for each subject
-    const gradeDetails = Object.values(subjectGrades).map(subject => {
-      const validInterros = subject.interros.filter(g => g !== null)
-      const interroAvg = validInterros.length ? validInterros.reduce((a, b) => a + b, 0) / validInterros.length : null
+      })
       
-      const validDevoirs = subject.devoirs.filter(g => g !== null)
-      let average = null
+      const generalAverage = totalCoefficients > 0 ? totalPoints / totalCoefficients : 0
       
-      if (interroAvg !== null && validDevoirs.length === 2) {
-        average = (interroAvg + validDevoirs[0] + validDevoirs[1]) / 3
-      } else if (interroAvg !== null && validDevoirs.length === 1) {
-        average = (interroAvg + validDevoirs[0]) / 2
-      } else if (interroAvg !== null) {
-        average = interroAvg
-      } else if (validDevoirs.length > 0) {
-        average = validDevoirs.reduce((a, b) => a + b, 0) / validDevoirs.length
+      const annualAverage = await getStudentAnnualAverage({ student, generalAverage })
+      
+      // Calculate category stats for this student
+      const categoryStats = {
+        lettres: await getCategoryStats({ student }, 'lettres'),
+        sciences: await getCategoryStats({ student }, 'sciences'),
+        autres: await getCategoryStats({ student }, 'autres')
       }
       
-      // Track best average for each subject across all students
-      if (average !== null) {
-        if (!classBestAverages[subject.subjectId] || average > classBestAverages[subject.subjectId]) {
-          classBestAverages[subject.subjectId] = average
-        }
-      }
-      
-      return {
-        ...subject,
-        interroAvg,
-        average
-      }
-    })
+      reports.push({
+        student,
+        grades: bulletinData.map(subject => ({
+          subjectId: subject.subjectId,
+          subjectName: subject.subjectName,
+          coefficient: subject.coefficient,
+          interros: subject.interros,
+          devoirs: subject.devoirs,
+          interroAvg: subject.interroAvg,
+          average: subject.subjectAvg
+        })),
+        generalAverage,
+        annualAverage,
+        totalPoints,
+        classRank: 1,
+        totalStudents: students.length,
+        classAverage: 0,
+        categoryStats
+      })
+    } catch (error) {
+      console.error(`Erreur pour l'élève ${student.firstName}:`, error)
+    }
+  }
 
-    // Calculate general average
-    let totalPoints = 0
-    let totalCoefficients = 0
-    
-    gradeDetails.forEach(subject => {
-      if (subject.average !== null) {
-        totalPoints += subject.average * subject.coefficient
-        totalCoefficients += subject.coefficient
-      }
-    })
-
-    const generalAverage = totalCoefficients > 0 ? totalPoints / totalCoefficients : 0
-
-    reports.push({
-      student,
-      grades: gradeDetails,
-      generalAverage,
-      totalPoints,
-      classRank: 1,
-      totalStudents: students.length,
-      classAverage: 0
-    })
-  })
 
   // Sort by general average for ranking
   reports.sort((a, b) => b.generalAverage - a.generalAverage)
@@ -613,6 +640,15 @@ function generateReports() {
   const classTotal = reports.reduce((sum, report) => sum + report.generalAverage, 0)
   const classAverage = classTotal / reports.length
   const firstStudentAverage = reports.length > 0 ? reports[0].generalAverage : 0
+
+  // Calculate annual ranking if not Trimestre 1
+  if (selectedPeriod.value !== 'Trimestre 1') {
+    // Sort by annual average for annual ranking
+    const annualSorted = [...reports].sort((a, b) => b.annualAverage - a.annualAverage)
+    annualSorted.forEach((report, index) => {
+      report.annualRank = index + 1
+    })
+  }
 
   reports.forEach((report, index) => {
     report.classRank = index + 1
@@ -669,10 +705,66 @@ function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString('fr-FR')
 }
 
-function exportToPDF(report) {
-  // This would implement PDF generation
-  // For now, just show an alert
-  alert(`Export PDF pour ${report.student.firstName} ${report.student.lastName} - Non implémenté dans cette démo`)
+async function exportToPDF(report) {
+  if (isExporting.value) return
+  
+  try {
+    isExporting.value = true
+    
+    // Find the bulletin element for this specific student
+    const bulletinElement = document.querySelector(`[data-student-id="${report.student.id}"]`)
+    if (!bulletinElement) {
+      alert('Erreur: Impossible de trouver le bulletin à exporter')
+      return
+    }
+
+    // Hide action buttons during export
+    const actionButtons = bulletinElement.querySelector('.no-print')
+    if (actionButtons) actionButtons.style.display = 'none'
+
+    // Generate canvas from HTML
+    const canvas = await html2canvas(bulletinElement, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff'
+    })
+
+    // Create PDF
+    const imgData = canvas.toDataURL('image/png')
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    
+    const imgWidth = 210 // A4 width in mm
+    const pageHeight = 295 // A4 height in mm
+    const imgHeight = (canvas.height * imgWidth) / canvas.width
+    let heightLeft = imgHeight
+    let position = 0
+
+    // Add first page
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+    heightLeft -= pageHeight
+
+    // Add additional pages if needed
+    while (heightLeft >= 0) {
+      position = heightLeft - imgHeight
+      pdf.addPage()
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+    }
+
+    // Download PDF
+    const fileName = `Bulletin_${report.student.firstName}_${report.student.lastName}_${selectedPeriod.value.replace(' ', '_')}.pdf`
+    pdf.save(fileName)
+
+    // Show action buttons again
+    if (actionButtons) actionButtons.style.display = 'flex'
+
+  } catch (error) {
+    console.error('Erreur lors de l\'export PDF:', error)
+    alert('Erreur lors de l\'export PDF. Veuillez réessayer.')
+  } finally {
+    isExporting.value = false
+  }
 }
 
 function printReport(report) {
@@ -755,29 +847,70 @@ function getClassStats(report) {
   }
 }
 
-function getCategoryStats(report, category) {
+async function getCategoryStats(report, category) {
   const categorySubjects = {
-    lettres: ['Français', 'Communication écrite', 'Lecture', 'Anglais'],
-    sciences: ['Mathématique', 'SVT', 'PCT', 'Physique', 'Chimie'],
-    autres: ['Histoire - Géo', 'EPS', 'Arabe', 'Éducation civique']
+    lettres: ['français', 'communication', 'lecture', 'anglais', 'lettres'],
+    sciences: ['mathématique', 'svt', 'pct', 'physique', 'chimie', 'sciences'],
+    autres: ['histoire', 'géo', 'eps', 'arabe', 'éducation', 'civique', 'sport', 'arts']
   }
   
   const subjects = categorySubjects[category] || []
-  const categoryGrades = report.grades.filter(grade => 
-    subjects.some(subject => grade.subjectName.toLowerCase().includes(subject.toLowerCase()))
-  )
   
-  if (categoryGrades.length === 0) {
-    return { firstTrim: 0, secondTrim: 0, annual: 0 }
+  // Get real data for all trimesters
+  const allPeriods = ['Trimestre 1', 'Trimestre 2', 'Trimestre 3']
+  const categoryAverages = {}
+  
+  for (const period of allPeriods) {
+    try {
+      const bulletinData = await gradesStore.getBulletinData(report.student.id, period)
+      const categoryGrades = bulletinData.filter(grade => 
+        subjects.some(subject => grade.subjectName.toLowerCase().includes(subject))
+      )
+      
+      if (categoryGrades.length > 0) {
+        let totalPoints = 0
+        let totalCoeff = 0
+        
+        categoryGrades.forEach(grade => {
+          if (grade.subjectAvg) {
+            totalPoints += grade.subjectAvg * grade.coefficient
+            totalCoeff += grade.coefficient
+          }
+        })
+        
+        categoryAverages[period] = totalCoeff > 0 ? totalPoints / totalCoeff : 0
+      } else {
+        categoryAverages[period] = 0
+      }
+    } catch (error) {
+      categoryAverages[period] = 0
+    }
   }
   
-  const avgSum = categoryGrades.reduce((sum, grade) => sum + (grade.average || 0), 0)
-  const currentAvg = avgSum / categoryGrades.length
+  const firstTrim = categoryAverages['Trimestre 1'] || 0
+  const secondTrim = categoryAverages['Trimestre 2'] || 0
+  const thirdTrim = categoryAverages['Trimestre 3'] || 0
+  
+  if (selectedPeriod.value === 'Trimestre 1') {
+    return {
+      firstTrim: firstTrim,
+      secondTrim: 0,
+      annual: firstTrim
+    }
+  }
+  
+  let annual = 0
+  if (selectedPeriod.value === 'Trimestre 2') {
+    annual = firstTrim > 0 ? (firstTrim + secondTrim) / 2 : secondTrim
+  } else {
+    const validAverages = [firstTrim, secondTrim, thirdTrim].filter(avg => avg > 0)
+    annual = validAverages.length > 0 ? validAverages.reduce((a, b) => a + b, 0) / validAverages.length : 0
+  }
   
   return {
-    firstTrim: Math.max(0, currentAvg - 1.5),
-    secondTrim: currentAvg,
-    annual: Math.min(20, currentAvg + 0.5)
+    firstTrim,
+    secondTrim,
+    annual
   }
 }
 
@@ -789,18 +922,33 @@ function getDetailedAppreciation(average) {
   return 'Résultats insuffisants. Redoublement d\'efforts nécessaire.'
 }
 
-function getStudentAnnualAverage(report) {
+async function getStudentAnnualAverage(report) {
   const currentAverage = report.generalAverage
   
-  if (selectedPeriod.value === 'Trimestre 2') {
-    // Formula: (current * 2 + T1) / 3
-    const firstTrimAverage = 12.5 // Mock 1st trimester average
-    return (currentAverage * 2 + firstTrimAverage) / 3
-  } else if (selectedPeriod.value === 'Trimestre 3') {
-    // Formula: (current * 2 + T1 + T2) / 4
-    const firstTrimAverage = 12.5 // Mock 1st trimester average
-    const secondTrimAverage = 13.2 // Mock 2nd trimester average
-    return (currentAverage * 2 + firstTrimAverage + secondTrimAverage) / 4
+  try {
+    const averages = await gradesStore.getStudentAverages(report.student.id)
+    const averagesByPeriod = {}
+    averages.forEach(avg => {
+      averagesByPeriod[avg.period] = parseFloat(avg.generalAverage)
+    })
+    
+    if (selectedPeriod.value === 'Trimestre 2') {
+      const t1 = averagesByPeriod['Trimestre 1'] || 0
+      const t2 = currentAverage
+      return t1 > 0 ? (t2 * 2 + t1) / 3 : t2
+    } else if (selectedPeriod.value === 'Trimestre 3') {
+      const t1 = averagesByPeriod['Trimestre 1'] || 0
+      const t2 = averagesByPeriod['Trimestre 2'] || 0
+      const t3 = currentAverage
+      
+      if (t1 > 0 && t2 > 0) {
+        return (t3 * 2 + t1 + t2) / 4
+      } else if (t2 > 0) {
+        return (t3 * 2 + t2) / 3
+      }
+    }
+  } catch (error) {
+    console.error('Error getting student averages:', error)
   }
   
   return currentAverage
