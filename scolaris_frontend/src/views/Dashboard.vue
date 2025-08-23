@@ -6,6 +6,28 @@
       <Header />
       
       <main class="p-6 space-y-6 flex-1 overflow-auto">
+        <!-- School Info Banner -->
+        <div v-if="schoolStore.schoolInfo.name" class="bg-gradient-to-r from-primary-600 to-primary-800 text-white rounded-lg p-6 shadow-lg">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+              <div class="w-16 h-16 rounded-lg overflow-hidden bg-white/20 flex items-center justify-center">
+                <img v-if="schoolStore.schoolInfo.logo" :src="schoolStore.schoolInfo.logo" alt="Logo" class="w-full h-full object-contain">
+                <i v-else class="fas fa-school text-white text-2xl"></i>
+              </div>
+              <div>
+                <h2 class="text-2xl font-bold text-white">{{ schoolStore.schoolInfo.name }}</h2>
+                <p class="text-white/80">{{ schoolStore.schoolInfo.address }}</p>
+                <p class="text-white/80">{{ schoolStore.schoolInfo.phone }}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-white/80 text-sm">Utilisateur connecté</p>
+              <p class="text-xl font-semibold text-white">{{ authStore.user?.name }}</p>
+              <p class="text-white/80 text-sm capitalize">{{ authStore.user?.role }}</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Statistics Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div class="stat-card bg-primary-500 text-white rounded-lg p-6 shadow-lg">
@@ -125,6 +147,13 @@
             </div>
           </div>
         </div>
+        
+        <!-- Loading Spinner -->
+        <LoadingSpinner 
+          :show="pageLoading" 
+          title="Chargement du tableau de bord" 
+          message="Initialisation des données de l'établissement..."
+        />
       </main>
     </div>
   </div>
@@ -139,6 +168,8 @@ import { useClassesStore } from '@/stores/classes'
 import { useTeachersStore } from '@/stores/teachers'
 import { useFinanceStore } from '@/stores/finance'
 import { useAuthStore } from '@/stores/auth'
+import { useSchoolStore } from '@/stores/school'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 
 const sidebarCollapsed = ref(false)
 const studentsStore = useStudentsStore()
@@ -146,9 +177,22 @@ const classesStore = useClassesStore()
 const teachersStore = useTeachersStore()
 const financeStore = useFinanceStore()
 const authStore = useAuthStore()
+const schoolStore = useSchoolStore()
+const pageLoading = ref(true)
 
-onMounted(() => {
-  authStore.initAuth()
+onMounted(async () => {
+  try {
+    await authStore.initAuth()
+    await schoolStore.fetchSchoolInfo()
+    await studentsStore.fetchStudents()
+    await classesStore.fetchClasses()
+    await teachersStore.fetchTeachers()
+    await financeStore.fetchPayments()
+  } finally {
+    setTimeout(() => {
+      pageLoading.value = false
+    }, 1000)
+  }
 })
 
 const quickActions = computed(() => {
