@@ -49,6 +49,8 @@ FeeType.hasMany(Payment, { foreignKey: "feeTypeId" });
 StudentAverage.belongsTo(Student, { foreignKey: "studentId" });
 Student.hasMany(StudentAverage, { foreignKey: "studentId" });
 
+
+
 export {
   Student,
   Classe,

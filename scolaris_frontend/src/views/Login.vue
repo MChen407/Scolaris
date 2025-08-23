@@ -193,13 +193,7 @@ async function handleLogin() {
     const success = await authStore.login(credentials.value.username, credentials.value.password)
     
     if (success) {
-      // Vérifier si l'établissement est configuré
-      await schoolStore.fetchSchoolInfo()
-      if (!schoolStore.isConfigured()) {
-        showSchoolSetup.value = true
-      } else {
-        router.push('/')
-      }
+      router.push('/')
     } else {
       error.value = authStore.error || 'Nom d\'utilisateur ou mot de passe incorrect'
     }
