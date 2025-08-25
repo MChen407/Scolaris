@@ -1,50 +1,84 @@
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+/**
+ * STORE D'AUTHENTIFICATION (AUTH STORE)
+ * 
+ * Gère l'authentification des utilisateurs, les sessions et les rôles.
+ * Utilise Pinia pour la gestion d'état global de l'application.
+ */
+
+import { defineStore } from 'pinia' // Framework de gestion d'état
+import { ref, computed } from 'vue' // Composition API de Vue 3
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const isAuthenticated = computed(() => !!user.value)
 
-  // Données de démonstration
-  const demoUsers = {
-    admin: { username: 'admin', password: 'admin', name: 'Administrateur', role: 'admin' },
-    secretaire: { username: 'secretaire', password: 'secretaire', name: 'Secrétaire', role: 'secretaire' },
-    comptable: { username: 'comptable', password: 'comptable', name: 'Comptable', role: 'comptable' }
-  }
+  /**
+   * UTILISATEURS DE DÉMONSTRATION
+   * 
+   * Dans une vraie application, ces données viendraient d'une API/base de données.
+   * Trois rôles définis :
+   * - admin : Accès complet à toutes les fonctionnalités
+   * - secretaire : Gestion des élèves, classes, notes et bulletins
+   * - comptable : Gestion financière et tableau de bord
+   */
+  const demoUsers = [
+    { id: 1, username: 'admin', password: 'admin123', role: 'admin', name: 'Administrateur' },
+    { id: 2, username: 'secretaire', password: 'secret123', role: 'secretaire', name: 'Secrétaire' },
+    { id: 3, username: 'comptable', password: 'compta123', role: 'comptable', name: 'Comptable' }
+  ]
 
-  const login = (credentials) => {
-    const foundUser = Object.values(demoUsers).find(
-      u => u.username === credentials.username && u.password === credentials.password
-    )
+  /**
+   * FONCTION DE CONNEXION
+   * 
+   * @param {string} username - Nom d'utilisateur
+   * @param {string} password - Mot de passe
+   * @returns {boolean} - True si la connexion réussit, false sinon
+   */
+  function login(username, password) {
+    // Recherche de l'utilisateur dans la liste des utilisateurs de démo
+    const foundUser = demoUsers.find(u => u.username === username && u.password === password)
     
     if (foundUser) {
-      user.value = foundUser
-      localStorage.setItem('user', JSON.stringify(foundUser))
-      return { success: true }
+      // Stockage de l'utilisateur dans l'état réactif
+      user.value = { ...foundUser }
+      // Sauvegarde dans le localStorage pour la persistance de session
+      localStorage.setItem('scolaris_user', JSON.stringify(foundUser))
+      return true // Connexion réussie
     }
-    
-    return { success: false, message: 'Identifiants incorrects' }
+    return false // Échec de la connexion
   }
 
-  const logout = () => {
-    user.value = null
-    localStorage.removeItem('user')
+  /**
+   * FONCTION DE DÉCONNEXION
+   * 
+   * Efface l'utilisateur de l'état et du localStorage
+   */
+  function logout() {
+    user.value = null // Suppression de l'utilisateur de l'état
+    localStorage.removeItem('scolaris_user') // Suppression du localStorage
   }
 
-  const checkAuth = () => {
-    const savedUser = localStorage.getItem('user')
+  /**
+   * INITIALISATION DE L'AUTHENTIFICATION
+   * 
+   * Vérifie s'il y a un utilisateur sauvegardé dans le localStorage
+   * au démarrage de l'application pour maintenir la session.
+   */
+  function initAuth() {
+    const savedUser = localStorage.getItem('scolaris_user')
     if (savedUser) {
+      // Restauration de l'utilisateur depuis le localStorage
       user.value = JSON.parse(savedUser)
-      return true
     }
     return false
   }
 
+  // EXPORT DES PROPRIÉTÉS ET MÉTHODES PUBLIQUES
   return {
-    user,
-    isAuthenticated,
-    login,
-    logout,
-    checkAuth
+    user, // Utilisateur actuel
+    isAuthenticated, // Statut de connexion
+    login, // Fonction de connexion
+    logout, // Fonction de déconnexion
+    initAuth // Fonction d'initialisation
   }
 })

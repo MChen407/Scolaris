@@ -113,23 +113,6 @@
             </div>
           </form>
         </BaseModal>
-
-        <!-- Alert Modal -->
-        <AlertModal
-          :show="showAlert"
-          :type="alertConfig.type"
-          :title="alertConfig.title"
-          :message="alertConfig.message"
-          @close="closeAlert"
-          @confirm="confirmAlert"
-        />
-        
-        <!-- Loading Spinner -->
-        <LoadingSpinner 
-          :show="pageLoading" 
-          title="Chargement des matières" 
-          message="Récupération des données..."
-        />
       </main>
     </div>
   </div>
@@ -141,23 +124,18 @@ import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import BaseTable from '@/components/common/BaseTable.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
-import AlertModal from '@/components/common/AlertModal.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useSubjectsStore } from '@/stores/subjects'
 import { useAuthStore } from '@/stores/auth'
 import {useClassesStore} from '@/stores/classes'
-import { useAlert } from '@/composables/useAlert'
 
 const sidebarCollapsed = ref(false)
 const subjectsStore = useSubjectsStore()
 const authStore = useAuthStore()
 const classesStore = useClassesStore()
-const { showAlert, alertConfig, showSuccess, showError, showConfirm, closeAlert, confirmAlert } = useAlert()
 
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const loading = ref(false)
-const pageLoading = ref(true)
 const editingSubject = ref(null)
 
 const subjectForm = ref({
@@ -168,14 +146,8 @@ const subjectForm = ref({
 })
 
 onMounted(async () => {
-  try {
-    await authStore.initAuth()
-    await subjectsStore.fetchSubjects()
-  } finally {
-    setTimeout(() => {
-      pageLoading.value = false
-    }, 700)
-  }
+  await authStore.initAuth()
+  await subjectsStore.fetchSubjects()
 })
 
 const columns = [
@@ -213,20 +185,9 @@ function editSubject(subject) {
   showEditModal.value = true
 }
 
-function deleteSubject(subject) {
-  showConfirm(
-    'Supprimer la matière',
-    `Êtes-vous sûr de vouloir supprimer la matière ${subject.name} ?`,
-    () => confirmDeleteSubject(subject)
-  )
-}
-
-async function confirmDeleteSubject(subject) {
-  try {
+async function deleteSubject(subject) {
+  if (confirm(`Êtes-vous sûr de vouloir supprimer la matière ${subject.name} ?`)) {
     await subjectsStore.deleteSubject(subject.id)
-    showSuccess('Succès', 'Matière supprimée avec succès')
-  } catch (error) {
-    showError('Erreur', 'Erreur lors de la suppression de la matière')
   }
 }
 
@@ -258,15 +219,12 @@ async function saveSubject() {
     
     if (editingSubject.value) {
       await subjectsStore.updateSubject(editingSubject.value.id, data)
-      showSuccess('Succès', 'Matière modifiée avec succès')
     } else {
       await subjectsStore.addSubject(data)
-      showSuccess('Succès', 'Matière ajoutée avec succès')
     }
     closeModal()
   } catch (error) {
     console.error('Erreur lors de la sauvegarde:', error)
-    showError('Erreur', 'Erreur lors de la sauvegarde de la matière')
   } finally {
     loading.value = false
   }

@@ -16,11 +16,6 @@
               <i class="fas fa-plus mr-2"></i>
               Nouvel Enseignant
             </button>
-            <button @click="exportTeachersPDF" :disabled="isExporting" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50">
-              <i v-if="isExporting" class="fas fa-spinner fa-spin mr-2"></i>
-              <i v-else class="fas fa-file-pdf mr-2"></i>
-              Exporter PDF
-            </button>
           </template>
           
           <template #cell-subjectNames="{ value }">
@@ -171,23 +166,6 @@
             </div>
           </form>
         </BaseModal>
-
-        <!-- Alert Modal -->
-        <AlertModal
-          :show="showAlert"
-          :type="alertConfig.type"
-          :title="alertConfig.title"
-          :message="alertConfig.message"
-          @close="closeAlert"
-          @confirm="confirmAlert"
-        />
-        
-        <!-- Loading Spinner -->
-        <LoadingSpinner 
-          :show="pageLoading" 
-          title="Chargement des enseignants" 
-          message="Récupération des données..."
-        />
       </main>
     </div>
   </div>
@@ -199,27 +177,20 @@ import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import BaseTable from '@/components/common/BaseTable.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
-import AlertModal from '@/components/common/AlertModal.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useTeachersStore } from '@/stores/teachers'
 import { useSubjectsStore } from '@/stores/subjects'
 import { useClassesStore } from '@/stores/classes'
 import { useAuthStore } from '@/stores/auth'
-import { usePDFExport } from '@/composables/usePDFExport'
-import { useAlert } from '@/composables/useAlert'
 
 const sidebarCollapsed = ref(false)
 const teachersStore = useTeachersStore()
 const subjectsStore = useSubjectsStore()
 const classesStore = useClassesStore()
 const authStore = useAuthStore()
-const { isExporting, exportToPDF } = usePDFExport()
-const { showAlert, alertConfig, showSuccess, showError, showConfirm, closeAlert, confirmAlert } = useAlert()
 
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const loading = ref(false)
-const pageLoading = ref(true)
 const editingTeacher = ref(null)
 
 const teacherForm = ref({
@@ -233,14 +204,8 @@ const teacherForm = ref({
 })
 
 onMounted(async () => {
-  try {
-    await authStore.initAuth()
-    await teachersStore.fetchTeachers()
-  } finally {
-    setTimeout(() => {
-      pageLoading.value = false
-    }, 900)
-  }
+  await authStore.initAuth()
+  await teachersStore.fetchTeachers()
 })
 
 const columns = [
@@ -267,32 +232,13 @@ const teachersWithDetails = computed(() => {
 
 function editTeacher(teacher) {
   editingTeacher.value = teacher
-  teacherForm.value = {
-    firstName: teacher.firstName,
-    lastName: teacher.lastName,
-    email: teacher.email,
-    phone: teacher.phone,
-    weeklyHours: teacher.weeklyHours,
-    subjects: teacher.Subjects ? teacher.Subjects.map(s => s.id) : [],
-    classes: teacher.Classes ? teacher.Classes.map(c => c.id) : []
-  }
+  teacherForm.value = { ...teacher }
   showEditModal.value = true
 }
 
 function deleteTeacher(teacher) {
-  showConfirm(
-    'Supprimer l\'enseignant',
-    `Êtes-vous sûr de vouloir supprimer l'enseignant ${teacher.firstName} ${teacher.lastName} ?`,
-    () => confirmDeleteTeacher(teacher)
-  )
-}
-
-async function confirmDeleteTeacher(teacher) {
-  try {
-    await teachersStore.deleteTeacher(teacher.id)
-    showSuccess('Succès', 'Enseignant supprimé avec succès')
-  } catch (error) {
-    showError('Erreur', 'Erreur lors de la suppression de l\'enseignant')
+  if (confirm(`Êtes-vous sûr de vouloir supprimer l'enseignant ${teacher.firstName} ${teacher.lastName} ?`)) {
+    teachersStore.deleteTeacher(teacher.id)
   }
 }
 
@@ -331,36 +277,15 @@ async function saveTeacher() {
 
     if (editingTeacher.value) {
       await teachersStore.updateTeacher(editingTeacher.value.id, data)
-      showSuccess('Succès', 'Enseignant modifié avec succès')
     } else {
       await teachersStore.addTeacher(data)
-      showSuccess('Succès', 'Enseignant ajouté avec succès')
     }
     closeModal()
   } catch (error) {
     console.error('Erreur lors de la sauvegarde:', error)
-    showError('Erreur', 'Erreur lors de la sauvegarde de l\'enseignant')
   } finally {
     loading.value = false
   }
-}
-
-function exportTeachersPDF() {
-  const pdfColumns = [
-    { key: 'firstName', label: 'Prenom' },
-    { key: 'lastName', label: 'Nom' },
-    { key: 'email', label: 'Email' },
-    { key: 'phone', label: 'Telephone' },
-    { key: 'weeklyHours', label: 'Heures/sem' },
-    { key: 'subjectNames', label: 'Matieres' }
-  ]
-  
-  exportToPDF(
-    teachersWithDetails.value,
-    'LISTE DES ENSEIGNANTS',
-    pdfColumns,
-    'liste_enseignants'
-  )
 }
 </script>
 

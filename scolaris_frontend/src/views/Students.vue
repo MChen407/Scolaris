@@ -6,26 +6,6 @@
       <Header />
       
       <main class="p-6 overflow-y-auto flex-1">
-        <!-- Filtres -->
-        <div class="bg-white rounded-lg shadow-sm border mb-6 p-4">
-          <div class="flex gap-4 items-end">
-            <div class="flex-1">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Filtrer par classe</label>
-              <select v-model="selectedClassFilter" class="input-field">
-                <option value="">Toutes les classes</option>
-                <option v-for="classe in classesStore.classes" :key="classe.id" :value="classe.id">
-                  {{ classe.name }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <button @click="resetFilters" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
-                Réinitialiser
-              </button>
-            </div>
-          </div>
-        </div>
-
         <BaseTable
           :data="filteredStudents"
           :columns="columns"
@@ -36,11 +16,6 @@
             <button @click="showAddModal = true" class="btn-primary">
               <i class="fas fa-plus mr-2"></i>
               Nouvel Élève
-            </button>
-            <button @click="exportStudentsPDF" :disabled="isExporting" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50">
-              <i v-if="isExporting" class="fas fa-spinner fa-spin mr-2"></i>
-              <i v-else class="fas fa-file-pdf mr-2"></i>
-              Exporter PDF {{ selectedClassFilter ? '(Classe filtrée)' : '(Tous)' }}
             </button>
           </template>
           
@@ -269,23 +244,6 @@
             </div>
           </div>
         </BaseModal>
-
-        <!-- Alert Modal -->
-        <AlertModal
-          :show="showAlert"
-          :type="alertConfig.type"
-          :title="alertConfig.title"
-          :message="alertConfig.message"
-          @close="closeAlert"
-          @confirm="confirmAlert"
-        />
-        
-        <!-- Loading Spinner -->
-        <LoadingSpinner 
-          :show="pageLoading" 
-          title="Chargement des élèves" 
-          message="Récupération des données..."
-        />
       </main>
     </div>
   </div>
@@ -297,26 +255,19 @@ import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import BaseTable from '@/components/common/BaseTable.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
-import AlertModal from '@/components/common/AlertModal.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useStudentsStore } from '@/stores/students'
 import { useClassesStore } from '@/stores/classes'
 import { useAuthStore } from '@/stores/auth'
-import { usePDFExport } from '@/composables/usePDFExport'
-import { useAlert } from '@/composables/useAlert'
 
 const sidebarCollapsed = ref(false)
 const studentsStore = useStudentsStore()
 const classesStore = useClassesStore()
 const authStore = useAuthStore()
-const { isExporting, exportToPDF } = usePDFExport()
-const { showAlert, alertConfig, showSuccess, showError, showConfirm, closeAlert, confirmAlert } = useAlert()
 
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showDetailsModal = ref(false)
 const loading = ref(false)
-const pageLoading = ref(true)
 const editingStudent = ref(null)
 const selectedStudent = ref(null)
 
@@ -338,18 +289,10 @@ const studentForm = ref({
 })
 
 const searchTerm = ref('')
-const selectedClassFilter = ref('')
 
-onMounted(async () => {
-  try {
-    await authStore.initAuth()
-    await studentsStore.fetchStudents()
-  } finally {
-    // Simuler un délai pour montrer l'animation
-    setTimeout(() => {
-      pageLoading.value = false
-    }, 1000)
-  }
+onMounted(() => {
+  authStore.initAuth()
+  studentsStore.fetchStudents()
 })
 
 // Colonnes de la table
@@ -372,25 +315,14 @@ const studentsWithClassNames = computed(() => {
   }))
 })
 
-// Filtrage par recherche et classe
+// Filtrage par recherche
 const filteredStudents = computed(() => {
-  let students = studentsWithClassNames.value
-  
-  // Filtre par classe
-  if (selectedClassFilter.value) {
-    students = students.filter(student => student.classId === parseInt(selectedClassFilter.value))
-  }
-  
-  // Filtre par recherche
-  if (searchTerm.value) {
-    students = students.filter(student =>
-      Object.values(student).some(val =>
-        String(val).toLowerCase().includes(searchTerm.value.toLowerCase())
-      )
+  if (!searchTerm.value) return studentsWithClassNames.value
+  return studentsWithClassNames.value.filter(student =>
+    Object.values(student).some(val =>
+      String(val).toLowerCase().includes(searchTerm.value.toLowerCase())
     )
-  }
-  
-  return students
+  )
 })
 
 // Récupérer le nom d'une classe par id
@@ -426,19 +358,8 @@ function viewStudent(student) {
 }
 
 function deleteStudent(student) {
-  showConfirm(
-    'Supprimer l\'élève',
-    `Êtes-vous sûr de vouloir supprimer l'élève ${student.firstName} ${student.lastName} ?`,
-    () => confirmDeleteStudent(student)
-  )
-}
-
-async function confirmDeleteStudent(student) {
-  try {
-    await studentsStore.deleteStudent(student.id)
-    showSuccess('Succès', 'Élève supprimé avec succès')
-  } catch (error) {
-    showError('Erreur', 'Erreur lors de la suppression de l\'élève')
+  if (confirm(`Êtes-vous sûr de vouloir supprimer l'élève ${student.firstName} ${student.lastName} ?`)) {
+    studentsStore.deleteStudent(student.id)
   }
 }
 
@@ -474,15 +395,12 @@ async function saveStudent() {
   try {
     if (editingStudent.value) {
       await studentsStore.updateStudent(editingStudent.value.id, { ...studentForm.value })
-      showSuccess('Succès', 'Élève modifié avec succès')
     } else {
       await studentsStore.addStudent({ ...studentForm.value })
-      showSuccess('Succès', 'Élève ajouté avec succès')
     }
     closeModal()
   } catch (error) {
     console.error('Erreur lors de la sauvegarde:', error)
-    showError('Erreur', 'Erreur lors de la sauvegarde de l\'élève')
   } finally {
     loading.value = false
   }
@@ -527,34 +445,6 @@ function formatCurrency(amount) {
     currency: 'XOF',
     minimumFractionDigits: 0
   }).format(amount).replace('XOF', 'FCFA')
-}
-
-function exportStudentsPDF() {
-  const pdfColumns = [
-    { key: 'firstName', label: 'Prenom' },
-    { key: 'lastName', label: 'Nom' },
-    { key: 'gender', label: 'Sexe' },
-    { key: 'className', label: 'Classe' },
-    { key: 'guardian', label: 'Tuteur' },
-    { key: 'phone', label: 'Telephone' }
-  ]
-  
-  const className = selectedClassFilter.value ? 
-    classesStore.getClassById(parseInt(selectedClassFilter.value))?.name : ''
-  const title = className ? `LISTE DES ELEVES - ${className}` : 'LISTE DES ELEVES'
-  const filename = className ? `liste_eleves_${className.toLowerCase().replace(/\s+/g, '_')}` : 'liste_eleves'
-  
-  exportToPDF(
-    filteredStudents.value,
-    title,
-    pdfColumns,
-    filename
-  )
-}
-
-function resetFilters() {
-  selectedClassFilter.value = ''
-  searchTerm.value = ''
 }
 </script>
 

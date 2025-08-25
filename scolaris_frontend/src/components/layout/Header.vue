@@ -15,18 +15,6 @@
           </span>
         </button>
         
-        <!-- School Info -->
-        <div v-if="schoolStore.schoolInfo.name" class="flex items-center gap-4 mr-4">
-          <div class="text-right">
-            <p class="text-sm font-medium text-gray-900">{{ schoolStore.schoolInfo.name }}</p>
-            <p class="text-xs text-gray-500">{{ schoolStore.schoolInfo.phone }}</p>
-          </div>
-          <div class="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
-            <img v-if="schoolStore.schoolInfo.logo" :src="schoolStore.schoolInfo.logo" alt="Logo" class="w-full h-full object-contain">
-            <i v-else class="fas fa-school text-gray-400"></i>
-          </div>
-        </div>
-        
         <!-- User Menu -->
         <div class="relative">
           <button
@@ -49,15 +37,12 @@
               class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50"
               @click.away="showUserMenu = false"
             >
-              <button @click="showProfile" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+              <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                 <i class="fas fa-user mr-2"></i> Profil
-              </button>
-              <button @click="showSchoolSettings" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                <i class="fas fa-school mr-2"></i> Établissement
-              </button>
-              <button @click="showSettings" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+              </a>
+              <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                 <i class="fas fa-cog mr-2"></i> Paramètres
-              </button>
+              </a>
               <hr class="my-2">
               <button
                 @click="logout"
@@ -70,41 +55,18 @@
         </div>
       </div>
     </div>
-    
-    <!-- Profile Modal -->
-    <ProfileModal
-      :show="showProfileModal"
-      @close="showProfileModal = false"
-    />
   </header>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import ProfileModal from '@/components/common/ProfileModal.vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useSchoolStore } from '@/stores/school'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const schoolStore = useSchoolStore()
 const showUserMenu = ref(false)
-const showProfileModal = ref(false)
-
-function handleSchoolConfigUpdate() {
-  schoolStore.fetchSchoolInfo()
-}
-
-onMounted(() => {
-  schoolStore.fetchSchoolInfo()
-  window.addEventListener('schoolConfigUpdated', handleSchoolConfigUpdate)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('schoolConfigUpdated', handleSchoolConfigUpdate)
-})
 
 const pageTitle = computed(() => {
   const titles = {
@@ -139,20 +101,5 @@ const pageDescription = computed(() => {
 function logout() {
   authStore.logout()
   router.push('/login')
-}
-
-function showProfile() {
-  showUserMenu.value = false
-  showProfileModal.value = true
-}
-
-function showSchoolSettings() {
-  showUserMenu.value = false
-  showProfileModal.value = true
-}
-
-function showSettings() {
-  showUserMenu.value = false
-  // TODO: Ouvrir modal paramètres généraux
 }
 </script>
