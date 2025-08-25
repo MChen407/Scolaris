@@ -9,11 +9,7 @@ import { defineStore } from 'pinia' // Framework de gestion d'état
 import { ref, computed } from 'vue' // Composition API de Vue 3
 
 export const useAuthStore = defineStore('auth', () => {
-  // ÉTAT RÉACTIF
-  const user = ref(null) // Utilisateur actuellement connecté
-  
-  // PROPRIÉTÉS CALCULÉES
-  // Vérifie si un utilisateur est connecté (user n'est pas null)
+  const user = ref(null)
   const isAuthenticated = computed(() => !!user.value)
 
   /**
@@ -74,6 +70,7 @@ export const useAuthStore = defineStore('auth', () => {
       // Restauration de l'utilisateur depuis le localStorage
       user.value = JSON.parse(savedUser)
     }
+    return false
   }
 
   // EXPORT DES PROPRIÉTÉS ET MÉTHODES PUBLIQUES

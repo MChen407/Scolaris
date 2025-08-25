@@ -1,133 +1,97 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import axios from 'axios'
 
 export const useFinanceStore = defineStore('finance', () => {
-  const feeTypes = ref([
-    { id: 1, name: 'Inscription', amount: 50000, dueDate: '2023-09-01' },
-    { id: 2, name: 'Mensualité', amount: 25000, dueDate: null },
-    { id: 3, name: 'Cantine', amount: 15000, dueDate: null }
-  ])
+  const payments = ref([])
+  const feeTypes = ref([])
+  const stats = ref({})
 
-  const payments = ref([
-    {
-      id: 1,
-      studentId: 1,
-      feeTypeId: 1,
-      amount: 50000,
-      date: '2023-09-01',
-      method: 'Espèces',
-      reference: 'REC001',
-      status: 'completed'
-    },
-    {
-      id: 2,
-      studentId: 1,
-      feeTypeId: 2,
-      amount: 25000,
-      date: '2023-10-01',
-      method: 'Chèque',
-      reference: 'REC002',
-      status: 'completed'
-    },
-    {
-      id: 3,
-      studentId: 2,
-      feeTypeId: 1,
-      amount: 50000,
-      date: '2023-09-01',
-      method: 'Virement',
-      reference: 'REC003',
-      status: 'completed'
+  async function fetchPayments() {
+    const res = await axios.get('http://localhost:3000/api/finance/payments')
+    payments.value = res.data
+  }
+
+  async function addPayment(paymentData) {
+    const res = await axios.post('http://localhost:3000/api/finance/payments', paymentData)
+    payments.value.push(res.data)
+    return res.data
+  }
+
+  async function getPaymentById(id) {
+    const res = await axios.get(`http://localhost:3000/api/finance/payments/${id}`)
+    return res.data
+  }
+
+  async function updatePayment(id, paymentData) {
+    const res = await axios.put(`http://localhost:3000/api/finance/payments/${id}`, paymentData)
+    const idx = payments.value.findIndex(p => p.id === id)
+    if (idx !== -1) payments.value[idx] = res.data
+    return res.data
+  }
+
+  async function deletePayment(id) {
+    await axios.delete(`http://localhost:3000/api/finance/payments/${id}`)
+    payments.value = payments.value.filter(p => p.id !== id)
+  }
+
+  async function getPaymentHistory(studentId) {
+    const res = await axios.get(`http://localhost:3000/api/finance/payments/history/${studentId}`)
+    return res.data
+  }
+
+  async function fetchFeeTypes() {
+    try {
+      const res = await axios.get('http://localhost:3000/api/finance/fee-types')
+      feeTypes.value = res.data
+      console.log('FeeTypes fetched:', res.data)
+    } catch (error) {
+      console.error('Error fetching fee types:', error)
     }
-  ])
+  }
 
-  const nextFeeTypeId = ref(4)
-  const nextPaymentId = ref(4)
+  async function addFeeType(feeTypeData) {
+    const res = await axios.post('http://localhost:3000/api/finance/fee-types', feeTypeData)
+    feeTypes.value.push(res.data)
+    return res.data
+  }
+
+  async function fetchStats() {
+    const res = await axios.get('http://localhost:3000/api/finance/stats')
+    stats.value = res.data
+  }
+
+  async function addTeacherPayment(paymentData) {
+    const res = await axios.post('http://localhost:3000/api/finance/teacher-payments', paymentData)
+    return res.data
+  }
+
+  async function fetchTeacherPayments() {
+    const res = await axios.get('http://localhost:3000/api/finance/teacher-payments')
+    return res.data
+  }
 
   const totalRevenue = computed(() => {
-    return payments.value
-      .filter(p => p.status === 'completed')
-      .reduce((sum, payment) => sum + payment.amount, 0)
+    return payments.value.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0)
   })
 
-  const paymentsByStudent = computed(() => {
-    return payments.value.reduce((acc, payment) => {
-      if (!acc[payment.studentId]) {
-        acc[payment.studentId] = []
-      }
-      acc[payment.studentId].push(payment)
-      return acc
-    }, {})
-  })
-
-
-   function addFeeType(feeTypeData) {
-    const feeType = {
-      id: nextFeeTypeId.value++,
-      ...feeTypeData
-    }
-    feeTypes.value.push(feeType)
-    return feeType
-  }
-
-  function updateFeeType(id, feeTypeData) {
-    const index = feeTypes.value.findIndex(f => f.id === id)
-    if (index !== -1) {
-      feeTypes.value[index] = { ...feeTypes.value[index], ...feeTypeData }
-      return feeTypes.value[index]
-    }
-    return null
-  }
-
-  function deleteFeeType(id) {
-    const index = feeTypes.value.findIndex(f => f.id === id)
-    if (index !== -1) {
-      feeTypes.value.splice(index, 1)
-      return true
-    }
-    return false
-  }
-
-  function addPayment(paymentData) {
-    const payment = {
-      id: nextPaymentId.value++,
-      date: new Date().toISOString().split('T')[0],
-      reference: `REC${String(nextPaymentId.value).padStart(3, '0')}`,
-      status: 'completed',
-      ...paymentData
-    }
-    payments.value.push(payment)
-    return payment
-  }
-
-  function updatePaymentStatus(id, status) {
-    const payment = payments.value.find(p => p.id === id)
-    if (payment) {
-      payment.status = status
-      return payment
-    }
-    return null
-  }
-
-  function getPaymentsByStudent(studentId) {
-    return payments.value.filter(p => p.studentId === studentId)
-  }
-
-  function getUnpaidStudents() {
-    return []
-  }
+  // Initialisation différée pour éviter les erreurs au démarrage
 
   return {
-    feeTypes,
     payments,
+    feeTypes,
+    stats,
     totalRevenue,
-    paymentsByStudent,
-    addFeeType,
-    updateFeeType,
-    deleteFeeType,
+    fetchPayments,
+    getPaymentById,
     addPayment,
-    updatePaymentStatus,
-    getPaymentsByStudent,
-    getUnpaidStudents
+    updatePayment,
+    deletePayment,
+    getPaymentHistory,
+    fetchFeeTypes,
+    addFeeType,
+    fetchStats,
+    addTeacherPayment,
+    fetchTeacherPayments
   }
 })

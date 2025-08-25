@@ -1,116 +1,31 @@
-import { defineStore } from 'pinia'
+import {  defineStore } from 'pinia'
 import { ref } from 'vue'
+import axios from 'axios'
 
 export const useTeachersStore = defineStore('teachers', () => {
-  const teachers = ref([
-    {
-      id: 1,
-      firstName: 'Marie',
-      lastName: 'Dubois',
-      email: 'marie.dubois@school.com',
-      phone: '0123456789',
-      subjects: [1, 2], // Mathématiques, Français
-      classes: [1, 2],
-      weeklyHours: 18,
-      hireDate: '2020-09-01'
-    },
-    {
-      id: 2,
-      firstName: 'Paul',
-      lastName: 'Lemaire',
-      email: 'paul.lemaire@school.com',
-      phone: '0123456790',
-      subjects: [3, 4], // Histoire, Géographie
-      classes: [2, 3],
-      weeklyHours: 18,
-      hireDate: '2019-09-01'
-    },
-        {
-      id: 3,
-      firstName: 'Sophie',
-      lastName: 'Martin',
-      email: 'sophie.martin@school.com',
-      phone: '0123456791',
-      subjects: [2, 5], // Français, Sciences
-      classes: [1, 3],
-      weeklyHours: 18,
-      hireDate: '2021-09-01'
-    },
-    {
-      id: 4,
-      firstName: 'Karim',
-      lastName: 'El Amrani',
-      email: 'karim.elamrani@school.com',
-      phone: '0123456792',
-      subjects: [1, 6], // Mathématiques, Anglais
-      classes: [2],
-      weeklyHours: 18,
-      hireDate: '2018-09-01'
-    },
-    {
-      id: 5,
-      firstName: 'Nadia',
-      lastName: 'Bennani',
-      email: 'nadia.bennani@school.com',
-      phone: '0123456793',
-      subjects: [4, 5], // Géographie, Sciences
-      classes: [1, 2, 3],
-      weeklyHours: 18,
-      hireDate: '2022-09-01'
-    },
-    {
-      id: 6,
-      firstName: 'Youssef',
-      lastName: 'Ait Taleb',
-      email: 'youssef.aittaleb@school.com',
-      phone: '0123456794',
-      subjects: [1, 3], // Mathématiques, Histoire
-      classes: [3],
-      weeklyHours: 18,
-      hireDate: '2020-01-15'
-    },
-    {
-      id: 7,
-      firstName: 'Leila',
-      lastName: 'Rahmouni',
-      email: 'leila.rahmouni@school.com',
-      phone: '0123456795',
-      subjects: [2, 6], // Français, Anglais
-      classes: [1, 2],
-      weeklyHours: 18,
-      hireDate: '2017-09-01'
-    }
-  ])
+  const teachers = ref([])
 
-  const nextId = ref(3)
-
-  function addTeacher(teacherData) {
-    const teacher = {
-      id: nextId.value++,
-      weeklyHours: 0,
-      hireDate: new Date().toISOString().split('T')[0],
-      ...teacherData
-    }
-    teachers.value.push(teacher)
-    return teacher
+  async function fetchTeachers(){
+    const res = await axios.get('http://localhost:3000/api/teachers')
+    teachers.value = res.data
   }
 
-  function updateTeacher(id, teacherData) {
-    const index = teachers.value.findIndex(t => t.id === id)
-    if (index !== -1) {
-      teachers.value[index] = { ...teachers.value[index], ...teacherData }
-      return teachers.value[index]
-    }
-    return null
+  async function addTeacher(teacherData) {
+    const res = await axios.post('http://localhost:3000/api/teachers', teacherData)
+    teachers.value.push(res.data)
+    return res.data
   }
 
-  function deleteTeacher(id) {
-    const index = teachers.value.findIndex(t => t.id === id)
-    if (index !== -1) {
-      teachers.value.splice(index, 1)
-      return true
-    }
-    return false
+  async function updateTeacher(id, teacherData) {
+   const res = await axios.put(`http://localhost:3000/api/teachers/${id}`, teacherData)
+   const idx = teachers.value.findIndex(t => t.id === id)
+   if(idx !== -1) teachers.value[idx] = res.data
+   return res.data
+  }
+
+  async function deleteTeacher(id) {
+    await axios.delete(`http://localhost:3000/api/teachers/${id}`)
+    teachers.value = teachers.value.filter(t => t.id !== id)
   }
 
   function getTeacherById(id) {
@@ -120,6 +35,7 @@ export const useTeachersStore = defineStore('teachers', () => {
   return {
     teachers,
     addTeacher,
+    fetchTeachers,
     updateTeacher,
     deleteTeacher,
     getTeacherById

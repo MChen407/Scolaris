@@ -1,4 +1,4 @@
-<template>
+ <template>
   <div class="layout-container">
     <Sidebar :collapsed="sidebarCollapsed" @toggle-sidebar="sidebarCollapsed = !sidebarCollapsed" />
     <div class="main-content overflow-auto"> <!-- Ajouté overflow-auto pour le scroll -->
@@ -28,7 +28,7 @@
           <template #cell-classes="{ item }">
             <div class="flex flex-wrap gap-1">
               <span
-                v-for="className in getClassNames(item.classes)"
+                v-for="className in getClassNames(item.Classes)"
                 :key="className"
                 class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs"
               >
@@ -113,6 +113,23 @@
             </div>
           </form>
         </BaseModal>
+
+        <!-- Alert Modal -->
+        <AlertModal
+          :show="showAlert"
+          :type="alertConfig.type"
+          :title="alertConfig.title"
+          :message="alertConfig.message"
+          @close="closeAlert"
+          @confirm="confirmAlert"
+        />
+        
+        <!-- Loading Spinner -->
+        <LoadingSpinner 
+          :show="pageLoading" 
+          title="Chargement des matières" 
+          message="Récupération des données..."
+        />
       </main>
     </div>
   </div>
@@ -124,18 +141,23 @@ import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import BaseTable from '@/components/common/BaseTable.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
+import AlertModal from '@/components/common/AlertModal.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useSubjectsStore } from '@/stores/subjects'
 import { useAuthStore } from '@/stores/auth'
 import {useClassesStore} from '@/stores/classes'
+import { useAlert } from '@/composables/useAlert'
 
 const sidebarCollapsed = ref(false)
 const subjectsStore = useSubjectsStore()
 const authStore = useAuthStore()
 const classesStore = useClassesStore()
+const { showAlert, alertConfig, showSuccess, showError, showConfirm, closeAlert, confirmAlert } = useAlert()
 
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const loading = ref(false)
+const pageLoading = ref(true)
 const editingSubject = ref(null)
 
 const subjectForm = ref({
@@ -146,8 +168,14 @@ const subjectForm = ref({
 })
 
 onMounted(async () => {
-  await authStore.initAuth()
-  await subjectsStore.fetchSubjects()
+  try {
+    await authStore.initAuth()
+    await subjectsStore.fetchSubjects()
+  } finally {
+    setTimeout(() => {
+      pageLoading.value = false
+    }, 700)
+  }
 })
 
 const columns = [
@@ -157,11 +185,9 @@ const columns = [
   { key: 'classes', label: 'Classes' }
 ]
 
-function getClassNames(classIds) {
-  if (!classIds || !Array.isArray(classIds)) return []
-  return classIds
-    .map(id => classesStore.classes.find(c => c.id === id)?.name)
-    .filter(Boolean)
+function getClassNames(classes) {
+  if (!classes || !Array.isArray(classes)) return []
+  return classes.map(c => c.name)
 }
 
 function getCategoryClass(category) {
@@ -178,13 +204,29 @@ function getCategoryClass(category) {
 
 function editSubject(subject) {
   editingSubject.value = subject
-  subjectForm.value = { ...subject }
+  subjectForm.value = {
+    name: subject.name,
+    coefficient: subject.coefficient,
+    category: subject.category,
+    classes: subject.Classes ? subject.Classes.map(c => c.id) : []
+  }
   showEditModal.value = true
 }
 
-async function deleteSubject(subject) {
-  if (confirm(`Êtes-vous sûr de vouloir supprimer la matière ${subject.name} ?`)) {
+function deleteSubject(subject) {
+  showConfirm(
+    'Supprimer la matière',
+    `Êtes-vous sûr de vouloir supprimer la matière ${subject.name} ?`,
+    () => confirmDeleteSubject(subject)
+  )
+}
+
+async function confirmDeleteSubject(subject) {
+  try {
     await subjectsStore.deleteSubject(subject.id)
+    showSuccess('Succès', 'Matière supprimée avec succès')
+  } catch (error) {
+    showError('Erreur', 'Erreur lors de la suppression de la matière')
   }
 }
 
@@ -207,14 +249,24 @@ function resetForm() {
 async function saveSubject() {
   loading.value = true
   try {
+    const data = {
+      name: subjectForm.value.name,
+      coefficient: subjectForm.value.coefficient,
+      category: subjectForm.value.category,
+      classIds: subjectForm.value.classes
+    }
+    
     if (editingSubject.value) {
-      await subjectsStore.updateSubject(editingSubject.value.id, { ...subjectForm.value })
+      await subjectsStore.updateSubject(editingSubject.value.id, data)
+      showSuccess('Succès', 'Matière modifiée avec succès')
     } else {
-      await subjectsStore.addSubject({ ...subjectForm.value })
+      await subjectsStore.addSubject(data)
+      showSuccess('Succès', 'Matière ajoutée avec succès')
     }
     closeModal()
   } catch (error) {
     console.error('Erreur lors de la sauvegarde:', error)
+    showError('Erreur', 'Erreur lors de la sauvegarde de la matière')
   } finally {
     loading.value = false
   }

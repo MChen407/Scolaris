@@ -303,8 +303,13 @@ const selectedPeriod = ref('')
 const studentGrades = ref({})
 const saving = ref(false)
 
-onMounted(() => {
+onMounted(async () => {
   authStore.initAuth()
+  try {
+    await gradesStore.fetchGrades()
+  } catch (error) {
+    console.log('Grades not loaded yet')
+  }
 })
 
 
@@ -344,11 +349,13 @@ const classStudents = computed(() => {
 const existingGrades = computed(() => {
   // Regroupe les notes par élève
   const grouped = {}
-  for (const grade of gradesStore.getGradesByClass(
-    selectedClassId.value,
-    selectedSubjectId.value,
-    selectedPeriod.value
-  )) {
+  const filteredGrades = gradesStore.grades.filter(g => 
+    g.classId === selectedClassId.value &&
+    g.subjectId === selectedSubjectId.value &&
+    g.period === selectedPeriod.value
+  )
+  
+  for (const grade of filteredGrades) {
     const key = `${grade.studentId}-${grade.subjectId}`
     if (!grouped[key]) {
       grouped[key] = {
@@ -414,13 +421,11 @@ function loadStudents() {
     // Pré-remplir les champs avec les notes existantes
     const interros = [null, null, null]
     const devoirs = [null, null]
-    let interroIndex = 0
-    let devoirIndex = 0
     for (const grade of grades) {
-      if (grade.type === 'Interro' && interroIndex < 3) {
-        interros[interroIndex++] = grade.grade
-      } else if (grade.type === 'Devoir' && devoirIndex < 2) {
-        devoirs[devoirIndex++] = grade.grade
+      if (grade.type === 'Interro' && grade.index !== undefined && grade.index < 3) {
+        interros[grade.index] = grade.grade
+      } else if (grade.type === 'Devoir' && grade.index !== undefined && grade.index < 2) {
+        devoirs[grade.index] = grade.grade
       }
     }
     studentGrades.value[student.id] = { interros, devoirs }
@@ -490,7 +495,8 @@ async function saveAllGrades() {
       const numClassId = parseInt(selectedClassId.value)
       
       // Interros
-      notes.interros.forEach((grade, idx) => {
+      for (let idx = 0; idx < notes.interros.length; idx++) {
+        const grade = notes.interros[idx]
         if (grade !== null && grade !== undefined && grade !== '') {
           const existing = gradesStore.grades.find(g =>
             g.studentId === numStudentId &&
@@ -501,23 +507,24 @@ async function saveAllGrades() {
             g.index === idx
           )
           if (existing) {
-            gradesStore.updateGrade(existing.id, { grade: parseFloat(grade) })
+            await gradesStore.updateGrade(existing.id, { grade: parseFloat(grade) })
           } else {
-            gradesStore.addGrade({
+            await gradesStore.addGrade({
               studentId: numStudentId,
               subjectId: numSubjectId,
               classId: numClassId,
               period: selectedPeriod.value,
               grade: parseFloat(grade),
-              maxGrade: 20,
               type: 'Interro',
               index: idx
             })
           }
         }
-      })
+      }
+      
       // Devoirs
-      notes.devoirs.forEach((grade, idx) => {
+      for (let idx = 0; idx < notes.devoirs.length; idx++) {
+        const grade = notes.devoirs[idx]
         if (grade !== null && grade !== undefined && grade !== '') {
           const existing = gradesStore.grades.find(g =>
             g.studentId === numStudentId &&
@@ -528,21 +535,20 @@ async function saveAllGrades() {
             g.index === idx
           )
           if (existing) {
-            gradesStore.updateGrade(existing.id, { grade: parseFloat(grade) })
+            await gradesStore.updateGrade(existing.id, { grade: parseFloat(grade) })
           } else {
-            gradesStore.addGrade({
+            await gradesStore.addGrade({
               studentId: numStudentId,
               subjectId: numSubjectId,
               classId: numClassId,
               period: selectedPeriod.value,
               grade: parseFloat(grade),
-              maxGrade: 20,
               type: 'Devoir',
               index: idx
             })
           }
         }
-      })
+      }
     }
     alert('Notes enregistrées avec succès!')
   } catch (error) {
@@ -566,9 +572,14 @@ function deleteGrade(grade) {
   }
 }
 
-watch([selectedClassId, selectedSubjectId, selectedPeriod], () => {
+watch([selectedClassId, selectedSubjectId, selectedPeriod], async () => {
   if (canShowGradesTable.value) {
-    loadStudents()
+    try {
+      await gradesStore.fetchGrades()
+      loadStudents()
+    } catch (error) {
+      console.log('Error loading grades:', error)
+    }
   }
 })
 </script>

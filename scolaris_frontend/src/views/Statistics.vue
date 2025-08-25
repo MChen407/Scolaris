@@ -55,61 +55,30 @@
 
         <!-- Charts Row -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Students by Class -->
+          <!-- Students by Class Chart -->
           <div class="card">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Répartition des Élèves par Classe</h3>
-            <div class="space-y-4">
-              <div
-                v-for="stat in studentsByClass"
-                :key="stat.className"
-                class="flex items-center justify-between"
-              >
-                <div class="flex items-center">
-                  <div class="w-4 h-4 rounded mr-3" :style="{ backgroundColor: stat.color }"></div>
-                  <span class="text-sm font-medium text-gray-900">{{ stat.className }}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-sm text-gray-600">{{ stat.count }} élèves</span>
-                  <div class="w-24 bg-gray-200 rounded-full h-2">
-                    <div
-                      class="h-2 rounded-full transition-all duration-300"
-                      :style="{ 
-                        width: `${(stat.count / totalStudents) * 100}%`,
-                        backgroundColor: stat.color
-                      }"
-                    ></div>
-                  </div>
-                </div>
-              </div>
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-semibold text-gray-900">Répartition des Élèves par Classe</h3>
+              <button @click="exportStudentsPDF" class="text-blue-600 hover:text-blue-800">
+                <i class="fas fa-file-pdf"></i>
+              </button>
             </div>
+            <DoughnutChart
+              :data="studentsByClass.map(s => s.count)"
+              :labels="studentsByClass.map(s => s.className)"
+              :colors="studentsByClass.map(s => s.color)"
+            />
           </div>
 
-          <!-- Average by Subject -->
+          <!-- Average by Subject Chart -->
           <div class="card">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Moyennes par Matière</h3>
-            <div class="space-y-4">
-              <div
-                v-for="stat in averagesBySubject"
-                :key="stat.subjectName"
-                class="flex items-center justify-between"
-              >
-                <div class="flex-1">
-                  <div class="flex justify-between items-center mb-1">
-                    <span class="text-sm font-medium text-gray-900">{{ stat.subjectName }}</span>
-                    <span :class="getGradeClass(stat.average)" class="text-sm font-bold px-2 py-1 rounded">
-                      {{ stat.average.toFixed(1) }}/20
-                    </span>
-                  </div>
-                  <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      :class="getGradeBarClass(stat.average)"
-                      class="h-2 rounded-full transition-all duration-300"
-                      :style="{ width: `${(stat.average / 20) * 100}%` }"
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <BarChart
+              :data="averagesBySubject.map(s => s.average)"
+              :labels="averagesBySubject.map(s => s.subjectName)"
+              title="Moyenne"
+              color="#10B981"
+            />
           </div>
         </div>
 
@@ -254,6 +223,15 @@
             </table>
           </div>
         </div>
+
+        <!-- PDF Generator Modal -->
+        <PDFGenerator
+          :show="showPDFModal"
+          :title="pdfTitle"
+          :data="pdfData"
+          :columns="pdfColumns"
+          @close="showPDFModal = false"
+        />
       </main>
     </div>
   </div>
@@ -263,11 +241,15 @@
 import { ref, computed, onMounted } from 'vue'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
+import BarChart from '@/components/charts/BarChart.vue'
+import DoughnutChart from '@/components/charts/DoughnutChart.vue'
+import PDFGenerator from '@/components/common/PDFGenerator.vue'
 import { useStudentsStore } from '@/stores/students'
 import { useClassesStore } from '@/stores/classes'
 import { useSubjectsStore } from '@/stores/subjects'
 import { useGradesStore } from '@/stores/grades'
 import { useFinanceStore } from '@/stores/finance'
+import { useStatisticsStore } from '@/stores/statistics'
 import { useAuthStore } from '@/stores/auth'
 
 const sidebarCollapsed = ref(false)
@@ -276,10 +258,12 @@ const classesStore = useClassesStore()
 const subjectsStore = useSubjectsStore()
 const gradesStore = useGradesStore()
 const financeStore = useFinanceStore()
+const statisticsStore = useStatisticsStore()
 const authStore = useAuthStore()
 
-onMounted(() => {
-  authStore.initAuth()
+onMounted(async () => {
+  await authStore.initAuth()
+  await statisticsStore.fetchAllStats()
 })
 
 const colors = [
@@ -287,7 +271,7 @@ const colors = [
   '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'
 ]
 
-const totalStudents = computed(() => studentsStore.students.length)
+const totalStudents = computed(() => statisticsStore.generalStats.totalStudents || 0)
 
 const newStudentsThisYear = computed(() => {
   const thisYear = new Date().getFullYear()
@@ -296,56 +280,24 @@ const newStudentsThisYear = computed(() => {
   ).length
 })
 
-const overallAverage = computed(() => {
-  const grades = gradesStore.grades
-  if (grades.length === 0) return 0
-  
-  const total = grades.reduce((sum, grade) => sum + grade.grade, 0)
-  return total / grades.length
-})
+const overallAverage = computed(() => statisticsStore.generalStats.overallAverage || 0)
 
-const successRate = computed(() => {
-  const grades = gradesStore.grades
-  if (grades.length === 0) return 0
-  
-  const passingGrades = grades.filter(grade => grade.grade >= 10).length
-  return (passingGrades / grades.length) * 100
-})
+const successRate = computed(() => statisticsStore.generalStats.successRate || 0)
 
-const totalRevenue = computed(() => financeStore.totalRevenue)
+const totalRevenue = computed(() => statisticsStore.generalStats.totalRevenue || 0)
 
 const totalPayments = computed(() => financeStore.payments.length)
 
 const studentsByClass = computed(() => {
-  return classesStore.classes.map((classe, index) => ({
-    className: classe.name,
-    count: studentsStore.getStudentsByClass(classe.id).length,
+  return statisticsStore.studentsByClass.map((stat, index) => ({
+    className: stat.className,
+    count: stat.studentCount,
     color: colors[index % colors.length]
   })).sort((a, b) => b.count - a.count)
 })
 
 const averagesBySubject = computed(() => {
-  const subjectAverages = {}
-  
-  gradesStore.grades.forEach(grade => {
-    if (!subjectAverages[grade.subjectId]) {
-      subjectAverages[grade.subjectId] = {
-        subjectId: grade.subjectId,
-        subjectName: getSubjectName(grade.subjectId),
-        total: 0,
-        count: 0
-      }
-    }
-    subjectAverages[grade.subjectId].total += grade.grade
-    subjectAverages[grade.subjectId].count++
-  })
-  
-  return Object.values(subjectAverages)
-    .map(subject => ({
-      ...subject,
-      average: subject.count > 0 ? subject.total / subject.count : 0
-    }))
-    .sort((a, b) => b.average - a.average)
+  return statisticsStore.averagesBySubject.sort((a, b) => b.average - a.average)
 })
 
 const maleStudents = computed(() => 
@@ -500,6 +452,35 @@ function getSuccessRateClass(rate) {
   if (rate >= 60) return 'bg-blue-100 text-blue-800'
   if (rate >= 40) return 'bg-yellow-100 text-yellow-800'
   return 'bg-red-100 text-red-800'
+}
+
+const showPDFModal = ref(false)
+const pdfData = ref([])
+const pdfColumns = ref([])
+const pdfTitle = ref('')
+
+function exportStudentsPDF() {
+  pdfTitle.value = 'Liste des Étudiants'
+  pdfData.value = studentsStore.students
+  pdfColumns.value = [
+    { key: 'firstName', label: 'Prénom' },
+    { key: 'lastName', label: 'Nom' },
+    { key: 'gender', label: 'Sexe' },
+    { key: 'birthDate', label: 'Date Naissance' }
+  ]
+  showPDFModal.value = true
+}
+
+function exportClassesPDF() {
+  pdfTitle.value = 'Liste des Classes'
+  pdfData.value = classesStore.classes
+  pdfColumns.value = [
+    { key: 'name', label: 'Nom' },
+    { key: 'level', label: 'Niveau' },
+    { key: 'section', label: 'Section' },
+    { key: 'capacity', label: 'Capacité' }
+  ]
+  showPDFModal.value = true
 }
 
 function formatCurrency(amount) {

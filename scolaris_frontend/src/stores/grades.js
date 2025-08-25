@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import axios from 'axios'
 
 export const useGradesStore = defineStore('grades', () => {
   const grades = ref([
@@ -168,32 +169,37 @@ const averagesByStudent = computed(() => {
   return result
 })
 
-  function addGrade(gradeData) {
-    const grade = {
-      id: nextId.value++,
-      ...gradeData,
-      date: new Date().toISOString().split('T')[0]
-    }
-    grades.value.push(grade)
-    return grade
+  async function fetchGrades() {
+    const res = await axios.get('http://localhost:3000/api/grades')
+    grades.value = res.data
   }
 
-  function updateGrade(id, gradeData) {
-    const index = grades.value.findIndex(g => g.id === id)
-    if (index !== -1) {
-      grades.value[index] = { ...grades.value[index], ...gradeData }
-      return grades.value[index]
-    }
-    return null
+  async function addGrade(gradeData) {
+    const res = await axios.post('http://localhost:3000/api/grades', gradeData)
+    grades.value.push(res.data)
+    return res.data
   }
 
-  function deleteGrade(id) {
+  async function updateGrade(id, gradeData) {
+    const res = await axios.put(`http://localhost:3000/api/grades/${id}`, gradeData)
     const index = grades.value.findIndex(g => g.id === id)
-    if (index !== -1) {
-      grades.value.splice(index, 1)
-      return true
-    }
-    return false
+    if (index !== -1) grades.value[index] = res.data
+    return res.data
+  }
+
+  async function deleteGrade(id) {
+    await axios.delete(`http://localhost:3000/api/grades/${id}`)
+    grades.value = grades.value.filter(g => g.id !== id)
+  }
+
+  async function getBulletinData(studentId, period) {
+    const res = await axios.get(`http://localhost:3000/api/grades/bulletin/${studentId}/${period}`)
+    return res.data
+  }
+
+  async function getStudentAverages(studentId) {
+    const res = await axios.get(`http://localhost:3000/api/grades/averages/${studentId}`)
+    return res.data
   }
 
   function getGradesByStudent(studentId, period = null) {
@@ -214,10 +220,13 @@ const averagesByStudent = computed(() => {
   return {
     grades,
     averagesByStudent,
+    fetchGrades,
     addGrade,
     updateGrade,
     deleteGrade,
     getGradesByStudent,
-    getGradesByClass
+    getGradesByClass,
+    getBulletinData,
+    getStudentAverages
   }
 })

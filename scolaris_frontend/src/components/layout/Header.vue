@@ -7,13 +7,7 @@
       </div>
       
       <div class="flex items-center gap-4">
-        <!-- Notifications -->
-        <button class="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
-          <i class="fas fa-bell text-xl"></i>
-          <span class="absolute top-0 right-0 bg-danger-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-            3
-          </span>
-        </button>
+       
         
         <!-- User Menu -->
         <div class="relative">

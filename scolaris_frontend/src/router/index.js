@@ -22,6 +22,7 @@ import Reports from '@/views/Reports.vue' // Génération de bulletins
 import Finance from '@/views/Finance.vue' // Gestion financière
 import Statistics from '@/views/Statistics.vue' // Statistiques et analyses
 
+
 /**
  * DÉFINITION DES ROUTES
  * 
@@ -36,69 +37,60 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: Login,
-    meta: { requiresAuth: false } // Accessible sans authentification
+    meta: { requiresAuth: false }
   },
   {
     path: '/',
     name: 'Dashboard',
     component: Dashboard,
-    // Accessible à tous les utilisateurs connectés
     meta: { requiresAuth: true, roles: ['admin', 'secretaire', 'comptable'] }
   },
   {
     path: '/students',
     name: 'Students',
     component: Students,
-    // Gestion des élèves : admin et secrétaire uniquement
     meta: { requiresAuth: true, roles: ['admin', 'secretaire'] }
   },
   {
     path: '/classes',
     name: 'Classes',
     component: Classes,
-    // Gestion des classes : admin et secrétaire uniquement
     meta: { requiresAuth: true, roles: ['admin', 'secretaire'] }
   },
   {
     path: '/teachers',
     name: 'Teachers',
     component: Teachers,
-    // Gestion des enseignants : admin uniquement
     meta: { requiresAuth: true, roles: ['admin'] }
   },
   {
     path: '/subjects',
     name: 'Subjects',
     component: Subjects,
-    // Gestion des matières : admin uniquement
     meta: { requiresAuth: true, roles: ['admin'] }
   },
   {
     path: '/grades',
     name: 'Grades',
     component: Grades,
-    // Gestion des notes : admin et secrétaire
     meta: { requiresAuth: true, roles: ['admin', 'secretaire'] }
   },
   {
     path: '/reports',
     name: 'Reports',
     component: Reports,
-    // Génération de bulletins : admin et secrétaire
     meta: { requiresAuth: true, roles: ['admin', 'secretaire'] }
   },
   {
     path: '/finance',
     name: 'Finance',
     component: Finance,
-    // Gestion financière : admin et comptable
     meta: { requiresAuth: true, roles: ['admin', 'comptable'] }
   },
   {
     path: '/statistics',
     name: 'Statistics',
     component: Statistics,
-    // Statistiques : admin uniquement
     meta: { requiresAuth: true, roles: ['admin'] }
   }
 ]
@@ -118,18 +110,13 @@ const router = createRouter({
  * 3. Rediriger vers la page appropriée si nécessaire
  */
 router.beforeEach((to, from, next) => {
-  // Récupération du store d'authentification
   const authStore = useAuthStore()
   
-  // Vérification de l'authentification
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    // Redirection vers la page de connexion si non connecté
     next('/login')
   } else if (to.meta.roles && !to.meta.roles.includes(authStore.user?.role)) {
-    // Redirection vers le dashboard si rôle non autorisé
     next('/')
   } else {
-    // Autorisation d'accès à la route
     next()
   }
 })
