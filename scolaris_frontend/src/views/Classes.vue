@@ -16,6 +16,11 @@
               <i class="fas fa-plus mr-2"></i>
               Nouvelle Classe
             </button>
+            <button @click="exportClassesPDF" :disabled="isExporting" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50">
+              <i v-if="isExporting" class="fas fa-spinner fa-spin mr-2"></i>
+              <i v-else class="fas fa-file-pdf mr-2"></i>
+              Exporter PDF
+            </button>
           </template>
           
           <template #cell-studentCount="{ value }">
@@ -170,6 +175,23 @@
             <p>Aucun élève dans cette classe</p>
           </div>
         </BaseModal>
+
+        <!-- Alert Modal -->
+        <AlertModal
+          :show="showAlert"
+          :type="alertConfig.type"
+          :title="alertConfig.title"
+          :message="alertConfig.message"
+          @close="closeAlert"
+          @confirm="confirmAlert"
+        />
+        
+        <!-- Loading Spinner -->
+        <LoadingSpinner 
+          :show="pageLoading" 
+          title="Chargement des classes" 
+          message="Récupération des données..."
+        />
       </main>
     </div>
   </div>
@@ -181,16 +203,22 @@ import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import BaseTable from '@/components/common/BaseTable.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
+import AlertModal from '@/components/common/AlertModal.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useClassesStore } from '@/stores/classes'
 import { useStudentsStore } from '@/stores/students'
 import { useAuthStore } from '@/stores/auth'
 import { useSubjectsStore } from '@/stores/subjects'
+import { usePDFExport } from '@/composables/usePDFExport'
+import { useAlert } from '@/composables/useAlert'
 
 const sidebarCollapsed = ref(false)
 const classesStore = useClassesStore()
 const studentsStore = useStudentsStore()
 const authStore = useAuthStore()
 const subjectsStore = useSubjectsStore()
+const { isExporting, exportToPDF } = usePDFExport()
+const { showAlert, alertConfig, showSuccess, showError, showConfirm, closeAlert, confirmAlert } = useAlert()
 
 function getSubjectNames(subjects) {
   if (!subjects || !Array.isArray(subjects)) return []
@@ -201,6 +229,7 @@ const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showStudentsModal = ref(false)
 const loading = ref(false)
+const pageLoading = ref(true)
 const editingClass = ref(null)
 const selectedClass = ref(null)
 
@@ -212,8 +241,15 @@ const classForm = ref({
   subjects: []
 })
 
-onMounted(() => {
-  authStore.initAuth()
+onMounted(async () => {
+  try {
+    await authStore.initAuth()
+    await classesStore.fetchClasses()
+  } finally {
+    setTimeout(() => {
+      pageLoading.value = false
+    }, 800)
+  }
 })
 
 const columns = [
@@ -255,13 +291,25 @@ function viewStudents(classe) {
 }
 
 function deleteClass(classe) {
-  if (confirm(`Êtes-vous sûr de vouloir supprimer la classe ${classe.name} ?`)) {
-    const studentsInClass = studentsStore.getStudentsByClass(classe.id)
-    if (studentsInClass.length > 0) {
-      alert('Impossible de supprimer une classe qui contient des élèves.')
-      return
-    }
-    classesStore.deleteClass(classe.id)
+  const studentsInClass = studentsStore.getStudentsByClass(classe.id)
+  if (studentsInClass.length > 0) {
+    showError('Erreur', 'Impossible de supprimer une classe qui contient des élèves.')
+    return
+  }
+  
+  showConfirm(
+    'Supprimer la classe',
+    `Êtes-vous sûr de vouloir supprimer la classe ${classe.name} ?`,
+    () => confirmDeleteClass(classe)
+  )
+}
+
+async function confirmDeleteClass(classe) {
+  try {
+    await classesStore.deleteClass(classe.id)
+    showSuccess('Succès', 'Classe supprimée avec succès')
+  } catch (error) {
+    showError('Erreur', 'Erreur lors de la suppression de la classe')
   }
 }
 
@@ -296,12 +344,15 @@ async function saveClass() {
     
     if (editingClass.value) {
       await classesStore.updateClass(editingClass.value.id, data)
+      showSuccess('Succès', 'Classe modifiée avec succès')
     } else {
       await classesStore.addClass(data)
+      showSuccess('Succès', 'Classe ajoutée avec succès')
     }
     closeModal()
   } catch (error) {
     console.error('Erreur lors de la sauvegarde:', error)
+    showError('Erreur', 'Erreur lors de la sauvegarde de la classe')
   } finally {
     loading.value = false
   }
@@ -309,6 +360,29 @@ async function saveClass() {
 
 function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString('fr-FR')
+}
+
+function exportClassesPDF() {
+  const classesData = classesStore.classesWithStats.map(classe => ({
+    ...classe,
+    subjectNames: getSubjectNames(classe.Subjects).join(', ')
+  }))
+  
+  const pdfColumns = [
+    { key: 'name', label: 'Nom' },
+    { key: 'level', label: 'Niveau' },
+    { key: 'section', label: 'Section' },
+    { key: 'capacity', label: 'Capacite' },
+    { key: 'studentCount', label: 'Eleves' },
+    { key: 'subjectNames', label: 'Matieres' }
+  ]
+  
+  exportToPDF(
+    classesData,
+    'LISTE DES CLASSES',
+    pdfColumns,
+    'liste_classes'
+  )
 }
 </script>
 

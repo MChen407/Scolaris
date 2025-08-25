@@ -6,8 +6,7 @@ export const getAllPayments = async (req, res) => {
             include: [
                 { model: Student, attributes: ['firstName', 'lastName'] },
                 { model: FeeType, attributes: ['name'] }
-            ],
-            order: [['createdAt', 'DESC']]
+            ]
         });
         res.json(payments);
     } catch (error) {
@@ -19,30 +18,18 @@ export const createPayment = async (req, res) => {
     try {
         const { studentId, feeTypeId, amount, method, status } = req.body;
         
-        if (!studentId || !feeTypeId || !amount) {
-            return res.status(400).json({ error: "Données manquantes" });
-        }
-        
         const payment = await Payment.create({
-            studentId: parseInt(studentId),
-            feeTypeId: parseInt(feeTypeId),
-            amount: parseFloat(amount),
-            method: method || 'Espèces',
-            status: status || 'completed',
+            studentId,
+            feeTypeId,
+            amount,
             date: new Date().toISOString().split('T')[0],
-            reference: `PAY-${Date.now()}`
+            method,
+            reference: `PAY-${Date.now()}`,
+            status
         });
         
-        const paymentWithRelations = await Payment.findByPk(payment.id, {
-            include: [
-                { model: Student, attributes: ['firstName', 'lastName'] },
-                { model: FeeType, attributes: ['name'] }
-            ]
-        });
-        
-        res.status(201).json(paymentWithRelations);
+        res.status(201).json(payment);
     } catch (error) {
-        console.error('Erreur création paiement:', error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -141,37 +128,6 @@ export const getFinanceStats = async (req, res) => {
     }
 };
 
-export const getAllFeeTypes = async (req, res) => {
-    try {
-        let feeTypes = await FeeType.findAll();
-        
-        if (feeTypes.length === 0) {
-            const defaultTypes = [
-                { name: 'Frais de scolarité' },
-                { name: 'Frais d\'inscription' },
-                { name: 'Frais de transport' },
-                { name: 'Frais de cantine' }
-            ];
-            
-            await FeeType.bulkCreate(defaultTypes);
-            feeTypes = await FeeType.findAll();
-        }
-        
-        res.json(feeTypes);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-export const createFeeType = async (req, res) => {
-    try {
-        const { name } = req.body;
-        const feeType = await FeeType.create({ name });
-        res.status(201).json(feeType);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
 
 export const createTeacherPayment = async (req, res) => {
     try {
@@ -211,6 +167,15 @@ export const getTeacherPayments = async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
         res.json(payments);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getFeeTypes = async (req, res) => {
+    try {
+        const feeTypes = await FeeType.findAll();
+        res.json(feeTypes);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

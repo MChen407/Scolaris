@@ -11,3 +11,4 @@ const Teacher = sequelize.define("Teacher", {
 });
 
 export default Teacher;
+

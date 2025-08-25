@@ -113,49 +113,43 @@
           </div>
           
           <!-- Payments Table -->
-          <div class="overflow-x-auto">
-            <table class="w-full">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ÉLÈVE</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TYPE</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MONTANT</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DATE ÉCHÉANCE</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STATUT</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="payment in filteredPayments" :key="payment.id" class="hover:bg-gray-50">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ payment.reference }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ getStudentName(payment.studentId) }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ getFeeTypeName(payment.feeTypeId) }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ formatCurrency(payment.amount) }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(payment.date) }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span :class="getStatusClass(payment.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                      {{ getStatusLabel(payment.status) }}
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button @click="viewPayment(payment)" class="text-blue-600 hover:text-blue-900 mr-2" title="Voir">
-                      <i class="fas fa-eye"></i>
-                    </button>
-                    <button @click="editPayment(payment)" class="text-yellow-600 hover:text-yellow-900 mr-2" title="Modifier">
-                      <i class="fas fa-edit"></i>
-                    </button>
-                    <button @click="confirmDelete(payment)" class="text-red-600 hover:text-red-900 mr-2" title="Supprimer">
-                      <i class="fas fa-trash"></i>
-                    </button>
-                    <button @click="openReceiptConfig(payment)" class="text-green-600 hover:text-green-900" title="Générer reçu">
-                      <i class="fas fa-file-pdf"></i>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <BaseTable
+            :data="paymentsWithNames"
+            :columns="paymentColumns"
+            title=""
+            :searchable="false"
+          >
+            <template #cell-amount="{ value }">
+              <span class="font-medium text-gray-900">{{ formatCurrency(value) }}</span>
+            </template>
+            
+            <template #cell-date="{ value }">
+              {{ formatDate(value) }}
+            </template>
+            
+            <template #cell-status="{ value }">
+              <span :class="getStatusClass(value)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                {{ getStatusLabel(value) }}
+              </span>
+            </template>
+            
+            <template #row-actions="{ item }">
+              <div class="flex gap-2">
+                <button @click="viewPayment(item)" class="text-blue-600 hover:text-blue-900" title="Voir">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button @click="editPayment(item)" class="text-yellow-600 hover:text-yellow-900" title="Modifier">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button @click="confirmDelete(item)" class="text-red-600 hover:text-red-900" title="Supprimer">
+                  <i class="fas fa-trash"></i>
+                </button>
+                <button @click="openReceiptConfig(item)" class="text-green-600 hover:text-green-900" title="Générer reçu">
+                  <i class="fas fa-file-pdf"></i>
+                </button>
+              </div>
+            </template>
+          </BaseTable>
           
           <!-- Action Buttons -->
           <div class="p-6 border-t border-gray-200">
@@ -193,9 +187,9 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Période</label>
                 <select v-model="teacherPayment.period" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                  <option value="day">Jour</option>
-                  <option value="week">Semaine</option>
-                  <option value="month">Mois</option>
+                  <option value="Jour">Jour</option>
+                  <option value="Semaine">Semaine</option>
+                  <option value="Mois">Mois</option>
                 </select>
               </div>
               <div>
@@ -486,6 +480,13 @@
           @close="closeAlert"
           @confirm="confirmAlert"
         />
+        
+        <!-- Loading Spinner -->
+        <LoadingSpinner 
+          :show="pageLoading" 
+          title="Chargement des finances" 
+          message="Récupération des données..."
+        />
       </main>
     </div>
   </div>
@@ -497,11 +498,15 @@ import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import AlertModal from '@/components/common/AlertModal.vue'
+import BaseTable from '@/components/common/BaseTable.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useAlert } from '@/composables/useAlert'
 import { useFinanceStore } from '@/stores/finance'
 import { useStudentsStore } from '@/stores/students'
 import { useAuthStore } from '@/stores/auth'
 import { useTeachersStore } from '@/stores/teachers'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('fr-FR', {
@@ -523,6 +528,7 @@ const teachersStore = useTeachersStore()
 
 const showAddPaymentModal = ref(false)
 const savingPayment = ref(false)
+const pageLoading = ref(true)
 
 const paymentForm = ref({
   studentId: '',
@@ -566,12 +572,27 @@ const studentsWithPayments = computed(() => {
   return uniqueStudents.size
 })
 
-const filteredPayments = computed(() => {
-  return financeStore.payments.filter(payment => {
-    if (filters.value.studentId && payment.studentId !== parseInt(filters.value.studentId)) return false
-    if (filters.value.status && payment.status !== filters.value.status) return false
-    return true
-  })
+const paymentColumns = [
+  { key: 'reference', label: 'Référence' },
+  { key: 'studentName', label: 'Élève' },
+  { key: 'feeTypeName', label: 'Type' },
+  { key: 'amount', label: 'Montant' },
+  { key: 'date', label: 'Date' },
+  { key: 'status', label: 'Statut' }
+]
+
+const paymentsWithNames = computed(() => {
+  return financeStore.payments
+    .filter(payment => {
+      if (filters.value.studentId && payment.studentId !== parseInt(filters.value.studentId)) return false
+      if (filters.value.status && payment.status !== filters.value.status) return false
+      return true
+    })
+    .map(payment => ({
+      ...payment,
+      studentName: getStudentName(payment.studentId),
+      feeTypeName: getFeeTypeName(payment.feeTypeId)
+    }))
 })
 
 const filteredStudents = computed(() => {
@@ -597,12 +618,19 @@ const calculateTeacherTotal = computed(() => {
 })
 
 onMounted(async () => {
-  await authStore.initAuth()
-  await financeStore.fetchPayments()
-  await financeStore.fetchFeeTypes()
-  await teachersStore.fetchTeachers()
-  await studentsStore.fetchStudents()
-  teacherPayments.value = await financeStore.fetchTeacherPayments()
+  try {
+    await authStore.initAuth()
+    await financeStore.fetchPayments()
+    await financeStore.fetchFeeTypes()
+    await teachersStore.fetchTeachers()
+    await studentsStore.fetchStudents()
+    teacherPayments.value = await financeStore.fetchTeacherPayments()
+    loadSchoolConfig()
+  } finally {
+    setTimeout(() => {
+      pageLoading.value = false
+    }, 1200)
+  }
 })
 
 function getStudentName(studentId) {
@@ -745,11 +773,16 @@ async function processTeacherPayment() {
     
     // Enregistrement en base de données
     const newPayment = await financeStore.addTeacherPayment({
+
       teacherId: teacherPayment.value.teacherId,
+ 
       hours: teacherPayment.value.hours,
       rate: teacherPayment.value.rate,
+   
       period: teacherPayment.value.period
+     
     })
+    console.log(newPayment)
     
     // Recharger la liste
     teacherPayments.value = await financeStore.fetchTeacherPayments()
@@ -760,7 +793,7 @@ async function processTeacherPayment() {
     teacherPayment.value = {
       teacherId: '',
       hours: 0,
-      period: 'day',
+      period: 'jour',
       rate: 0
     }
   } catch (error) {
@@ -819,8 +852,26 @@ const receiptConfig = ref({
   logoUrl: ''
 })
 
+// Charger la configuration de l'établissement connecté
+function loadSchoolConfig() {
+  const schoolId = localStorage.getItem('current_school_id')
+  if (schoolId) {
+    const saved = localStorage.getItem(`schoolConfig_${schoolId}`)
+    if (saved) {
+      const config = JSON.parse(saved)
+      receiptConfig.value = {
+        schoolName: config.name || '',
+        address: config.address || '',
+        phone: config.phone || '',
+        logoUrl: config.logo || ''
+      }
+    }
+  }
+}
+
 function openReceiptConfig(payment) {
   receiptPayment.value = payment
+  loadSchoolConfig() // Charger automatiquement la config
   showReceiptModal.value = true
 }
 
@@ -835,123 +886,122 @@ function handleReceiptLogoUpload(event) {
   }
 }
 
+
 async function generatePDFReceipt() {
   try {
-    const { jsPDF } = await import('jspdf')
+    if (!receiptPayment.value) {
+      showError('Erreur', 'Aucun paiement sélectionné')
+      return
+    }
+
+    console.log("Données du paiement:", receiptPayment.value)
+    console.log("Type de frais ID:", receiptPayment.value.feeTypeId)
+    console.log("Types de frais disponibles:", financeStore.feeTypes)
+
     const doc = new jsPDF()
-    
-    // Background image si disponible
+    const PRIMARY_COLOR = '#2c3e50'
+    const TEXT_COLOR = '#34495e'
+    const PAGE_MARGIN = 15
+    const LOGO_HEIGHT = 25
+    const LIGHT_GRAY = '#ecf0f1'
+
+    // En-tête
     if (receiptConfig.value.logoUrl) {
-      doc.addImage(receiptConfig.value.logoUrl, 'JPEG', 0, 0, 210, 297, '', 'NONE', 0.1)
+      doc.addImage(receiptConfig.value.logoUrl, 'PNG', PAGE_MARGIN, PAGE_MARGIN, 0, LOGO_HEIGHT)
     }
+    doc.setTextColor(TEXT_COLOR)
+    doc.setFontSize(9)
+    doc.text((receiptConfig.value.schoolName || 'Nom Établissement').toUpperCase(), PAGE_MARGIN, PAGE_MARGIN + LOGO_HEIGHT + 8)
+    doc.text(receiptConfig.value.address || 'Adresse', PAGE_MARGIN, PAGE_MARGIN + LOGO_HEIGHT + 13)
+    doc.text('Tél: ' + (receiptConfig.value.phone || 'N/A'), PAGE_MARGIN, PAGE_MARGIN + LOGO_HEIGHT + 18)
     
-    // Header avec bordure
-    doc.setFillColor(41, 128, 185)
-    doc.rect(20, 20, 170, 40, 'F')
-    doc.setDrawColor(0, 0, 0)
-    doc.setLineWidth(1)
-    doc.rect(20, 20, 170, 40, 'S')
-    
-    // Logo principal
-    if (receiptConfig.value.logoUrl) {
-      doc.addImage(receiptConfig.value.logoUrl, 'JPEG', 25, 25, 30, 30)
-    }
-    
-    // Informations établissement
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(18)
+    doc.setTextColor(PRIMARY_COLOR)
     doc.setFont('helvetica', 'bold')
-    doc.text(receiptConfig.value.schoolName, 105, 35, { align: 'center' })
+    doc.setFontSize(26)
+    doc.text('REÇU', 210 - PAGE_MARGIN, PAGE_MARGIN + 15, { align: 'right' })
     
-    doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
-    doc.text(receiptConfig.value.address, 105, 45, { align: 'center' })
-    doc.text('Tel: ' + receiptConfig.value.phone, 105, 52, { align: 'center' })
+    doc.setFontSize(11)
+    doc.text('N°: ' + (receiptPayment.value.reference || 'N/A'), 210 - PAGE_MARGIN, PAGE_MARGIN + 22, { align: 'right' })
+    doc.text('Date: ' + formatDate(receiptPayment.value.date || new Date()), 210 - PAGE_MARGIN, PAGE_MARGIN + 29, { align: 'right' })
     
-    // Titre du document
-    doc.setTextColor(0, 0, 0)
-    doc.setFontSize(20)
-    doc.setFont('helvetica', 'bold')
-    doc.text('RECU DE PAIEMENT', 105, 80, { align: 'center' })
-    
-    // Numéro de référence
-    doc.setFillColor(240, 240, 240)
-    doc.rect(20, 90, 170, 15, 'F')
-    doc.setDrawColor(0, 0, 0)
-    doc.rect(20, 90, 170, 15, 'S')
+    doc.setDrawColor(LIGHT_GRAY)
+    doc.line(PAGE_MARGIN, PAGE_MARGIN + LOGO_HEIGHT + 30, 210 - PAGE_MARGIN, PAGE_MARGIN + LOGO_HEIGHT + 30)
+
+    let yPosition = PAGE_MARGIN + LOGO_HEIGHT + 45
     doc.setFontSize(12)
     doc.setFont('helvetica', 'bold')
-    doc.text('Reference: ' + receiptPayment.value.reference, 105, 100, { align: 'center' })
-    
-    // Section informations - Colonne gauche
+    doc.text('Reçu de :', PAGE_MARGIN, yPosition)
     doc.setFontSize(11)
     doc.setFont('helvetica', 'normal')
+    doc.text('Élève : ' + getStudentName(receiptPayment.value.studentId), PAGE_MARGIN, yPosition + 7)
+
+    // Récupération sécurisée des données
+    const feeTypeName = getFeeTypeName(receiptPayment.value.feeTypeId) || 'Type non défini'
+    const paymentMethod = receiptPayment.value.method || 'Non spécifié'
+    const paymentAmount = new Intl.NumberFormat('fr-FR').format(receiptPayment.value.amount || 0) + ' FCFA'
+
+    console.log("Données formatées:", { feeTypeName, paymentMethod, paymentAmount })
+
+    const receiptDetails = [
+      ['Type de frais', feeTypeName],
+      ['Mode de paiement', paymentMethod],
+      ['Montant Payé', paymentAmount]
+    ]
     
-    // Labels
-    doc.setFont('helvetica', 'bold')
-    doc.text('Date:', 30, 125)
-    doc.text('Eleve:', 30, 140)
-    doc.text('Type de frais:', 30, 155)
-    doc.text('Mode de paiement:', 30, 170)
-    doc.text('Statut:', 30, 185)
-    
-    // Valeurs
-    doc.setFont('helvetica', 'normal')
-    doc.text(formatDate(receiptPayment.value.date), 80, 125)
-    doc.text(getStudentName(receiptPayment.value.studentId), 80, 140)
-    doc.text(getFeeTypeName(receiptPayment.value.feeTypeId), 80, 155)
-    doc.text(receiptPayment.value.method, 80, 170)
-    doc.text(getStatusLabel(receiptPayment.value.status), 80, 185)
-    
-    // Section montant - Colonne droite
-    doc.setFillColor(41, 128, 185)
-    doc.rect(120, 120, 60, 30, 'F')
-    doc.setDrawColor(0, 0, 0)
-    doc.rect(120, 120, 60, 30, 'S')
-    
-    doc.setTextColor(255, 255, 255)
+    autoTable(doc, {
+      startY: yPosition + 20,
+      head: [['Détails du Paiement', '']],
+      body: receiptDetails,
+      theme: 'grid',
+      headStyles: { 
+        fillColor: PRIMARY_COLOR, 
+        textColor: '#ffffff', 
+        fontStyle: 'bold' 
+      },
+      styles: { 
+        font: 'helvetica', 
+        fontSize: 11, 
+        cellPadding: 4,
+        textColor: TEXT_COLOR
+      },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 60 },
+        1: { halign: 'left', cellWidth: 'auto' }
+      },
+      didDrawPage: (data) => {
+        yPosition = data.cursor.y
+      }
+    })
+
+    // Statut et pied de page
+    yPosition += 15
+    const status = receiptPayment.value.status === 'completed'
     doc.setFontSize(12)
     doc.setFont('helvetica', 'bold')
-    doc.text('MONTANT PAYE', 150, 132, { align: 'center' })
-    
-    doc.setFontSize(16)
-    doc.text(formatCurrency(receiptPayment.value.amount), 150, 142, { align: 'center' })
-    
-    // Bordure principale
-    doc.setTextColor(0, 0, 0)
-    doc.setDrawColor(0, 0, 0)
-    doc.setLineWidth(2)
-    doc.rect(20, 115, 170, 80, 'S')
-    
-    // Section signature
+    doc.setTextColor(status ? '#27ae60' : '#e67e22')
+    doc.text(`STATUT : ${status ? 'PAYÉ ✅' : 'EN ATTENTE'}`, 210 - PAGE_MARGIN, yPosition, { align: 'right' })
+
+    const pageHeight = doc.internal.pageSize.getHeight()
+    doc.setDrawColor(LIGHT_GRAY)
+    doc.line(PAGE_MARGIN, pageHeight - 35, 210 - PAGE_MARGIN, pageHeight - 35)
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
-    doc.text('Signature et cachet:', 30, 215)
-    
-    doc.setDrawColor(0, 0, 0)
-    doc.setLineWidth(1)
-    doc.rect(30, 220, 80, 40, 'S')
-    
-    // Date de génération
-    doc.text('Date de generation:', 120, 215)
+    doc.setTextColor(TEXT_COLOR)
+    doc.text('Signature et cachet :', PAGE_MARGIN, pageHeight - 28)
     doc.setFont('helvetica', 'normal')
-    doc.text(new Date().toLocaleDateString('fr-FR'), 120, 225)
+    doc.setFontSize(9)
+    doc.setTextColor('#888888')
+    const footerText = "Merci pour votre confiance.\nCe reçu fait foi de paiement et a été généré automatiquement."
+    doc.text(footerText, 105, pageHeight - 15, { align: 'center' })
     
-    // Footer
-    doc.setFontSize(8)
-    doc.setTextColor(100, 100, 100)
-    doc.text('Ce recu fait foi de paiement', 105, 280, { align: 'center' })
-    
-    // Bordure générale
-    doc.setDrawColor(0, 0, 0)
-    doc.setLineWidth(3)
-    doc.rect(15, 15, 180, 270, 'S')
-    
-    doc.save('recu_' + receiptPayment.value.reference + '.pdf')
+    doc.save('recu_' + (receiptPayment.value.reference || 'test') + '.pdf')
     showReceiptModal.value = false
-    showSuccess('Succes', 'Recu PDF genere avec succes')
+    showSuccess('Succès', 'Reçu PDF généré avec succès')
+
   } catch (error) {
-    showError('Erreur', 'Erreur lors de la generation du PDF')
+    console.error("Erreur lors de la génération du PDF:", error)
+    showError('Erreur', 'Erreur lors de la génération du PDF')
   }
 }
 
