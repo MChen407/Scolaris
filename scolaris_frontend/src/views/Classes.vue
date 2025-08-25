@@ -2,19 +2,24 @@
   <div class="layout-container">
     <Sidebar :collapsed="sidebarCollapsed" @toggle-sidebar="sidebarCollapsed = !sidebarCollapsed" />
     
-    <div class="main-content">
+    <div class="main-content flex flex-col overflow-auto">
       <Header />
       
-      <main class="p-6">
+      <main class="p-6 flex-1 overflow-auto">
         <BaseTable
           :data="classesStore.classesWithStats"
           :columns="columns"
           title="Liste des Classes"
         >
           <template #actions>
-            <button @click="showAddModal = true" class="btn-primary">
+            <button @click="openAddModal" class="btn-primary">
               <i class="fas fa-plus mr-2"></i>
               Nouvelle Classe
+            </button>
+            <button @click="exportClassesPDF" :disabled="isExporting" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50">
+              <i v-if="isExporting" class="fas fa-spinner fa-spin mr-2"></i>
+              <i v-else class="fas fa-file-pdf mr-2"></i>
+              Exporter PDF
             </button>
           </template>
           
@@ -23,24 +28,38 @@
               {{ value }} élèves
             </span>
           </template>
+          <template #cell-subjects="{ item }">
+            <div class="flex flex-wrap gap-1">
+              <span
+                v-for="subjectName in getSubjectNames(item.Subjects)"
+                :key="subjectName"
+                class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs"
+              >
+                {{ subjectName }}
+              </span>
+            </div>
+          </template>
           
           <template #row-actions="{ item }">
             <div class="flex gap-2">
               <button
                 @click="editClass(item)"
                 class="text-primary-600 hover:text-primary-900 transition-colors"
+                title="Modifier"
               >
                 <i class="fas fa-edit"></i>
               </button>
               <button
                 @click="viewStudents(item)"
                 class="text-success-600 hover:text-success-900 transition-colors"
+                title="Voir les élèves"
               >
                 <i class="fas fa-users"></i>
               </button>
               <button
                 @click="deleteClass(item)"
                 class="text-danger-600 hover:text-danger-900 transition-colors"
+                title="Supprimer"
               >
                 <i class="fas fa-trash"></i>
               </button>
@@ -65,6 +84,7 @@
                 required
                 class="input-field"
                 placeholder="Ex: 6ème A"
+                autocomplete="off"
               >
             </div>
             
@@ -106,17 +126,35 @@
                 placeholder="Nombre maximum d'élèves"
               >
             </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Matières enseignées</label>
+              <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3">
+                <label
+                  v-for="subject in subjectsStore.subjects"
+                  :key="subject.id"
+                  class="flex items-center space-x-2"
+                >
+                  <input
+                    type="checkbox"
+                    :value="subject.id"
+                    v-model="classForm.subjects"
+                    class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  >
+                  <span class="text-sm">{{ subject.name }}</span>
+                </label>
+              </div>
+            </div>
           </form>
         </BaseModal>
 
         <!-- Students List Modal -->
         <BaseModal
           :show="showStudentsModal"
-          :title="`Élèves de ${selectedClass?.name}`"
+          :title="`Élèves de ${selectedClass?.name || ''}`"
           :show-footer="false"
           @close="showStudentsModal = false"
         >
-          <div v-if="classStudents.length > 0" class="space-y-3">
+          <div v-if="classStudents.length > 0" class="space-y-3 max-h-96 overflow-auto">
             <div
               v-for="student in classStudents"
               :key="student.id"
@@ -137,6 +175,23 @@
             <p>Aucun élève dans cette classe</p>
           </div>
         </BaseModal>
+
+        <!-- Alert Modal -->
+        <AlertModal
+          :show="showAlert"
+          :type="alertConfig.type"
+          :title="alertConfig.title"
+          :message="alertConfig.message"
+          @close="closeAlert"
+          @confirm="confirmAlert"
+        />
+        
+        <!-- Loading Spinner -->
+        <LoadingSpinner 
+          :show="pageLoading" 
+          title="Chargement des classes" 
+          message="Récupération des données..."
+        />
       </main>
     </div>
   </div>
@@ -148,19 +203,33 @@ import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import BaseTable from '@/components/common/BaseTable.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
+import AlertModal from '@/components/common/AlertModal.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useClassesStore } from '@/stores/classes'
 import { useStudentsStore } from '@/stores/students'
 import { useAuthStore } from '@/stores/auth'
+import { useSubjectsStore } from '@/stores/subjects'
+import { usePDFExport } from '@/composables/usePDFExport'
+import { useAlert } from '@/composables/useAlert'
 
 const sidebarCollapsed = ref(false)
 const classesStore = useClassesStore()
 const studentsStore = useStudentsStore()
 const authStore = useAuthStore()
+const subjectsStore = useSubjectsStore()
+const { isExporting, exportToPDF } = usePDFExport()
+const { showAlert, alertConfig, showSuccess, showError, showConfirm, closeAlert, confirmAlert } = useAlert()
+
+function getSubjectNames(subjects) {
+  if (!subjects || !Array.isArray(subjects)) return []
+  return subjects.map(s => s.name)
+}
 
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showStudentsModal = ref(false)
 const loading = ref(false)
+const pageLoading = ref(true)
 const editingClass = ref(null)
 const selectedClass = ref(null)
 
@@ -168,11 +237,19 @@ const classForm = ref({
   name: '',
   level: '',
   section: '',
-  capacity: 30
+  capacity: 30,
+  subjects: []
 })
 
-onMounted(() => {
-  authStore.initAuth()
+onMounted(async () => {
+  try {
+    await authStore.initAuth()
+    await classesStore.fetchClasses()
+  } finally {
+    setTimeout(() => {
+      pageLoading.value = false
+    }, 800)
+  }
 })
 
 const columns = [
@@ -180,7 +257,8 @@ const columns = [
   { key: 'level', label: 'Niveau' },
   { key: 'section', label: 'Section' },
   { key: 'capacity', label: 'Capacité' },
-  { key: 'studentCount', label: 'Élèves inscrits' }
+  { key: 'studentCount', label: 'Élèves inscrits' },
+  {key: 'subjects', label: 'Matières'}
 ]
 
 const classStudents = computed(() => {
@@ -188,10 +266,23 @@ const classStudents = computed(() => {
   return studentsStore.getStudentsByClass(selectedClass.value.id)
 })
 
+function openAddModal() {
+  resetForm()
+  editingClass.value = null
+  showAddModal.value = true
+}
+
 function editClass(classe) {
   editingClass.value = classe
-  classForm.value = { ...classe }
+  classForm.value = {
+    name: classe.name,
+    level: classe.level,
+    section: classe.section,
+    capacity: classe.capacity,
+    subjects: classe.Subjects ? classe.Subjects.map(s => s.id) : []
+  }
   showEditModal.value = true
+  showAddModal.value = false
 }
 
 function viewStudents(classe) {
@@ -200,13 +291,25 @@ function viewStudents(classe) {
 }
 
 function deleteClass(classe) {
-  if (confirm(`Êtes-vous sûr de vouloir supprimer la classe ${classe.name} ?`)) {
-    const studentsInClass = studentsStore.getStudentsByClass(classe.id)
-    if (studentsInClass.length > 0) {
-      alert('Impossible de supprimer une classe qui contient des élèves.')
-      return
-    }
-    classesStore.deleteClass(classe.id)
+  const studentsInClass = studentsStore.getStudentsByClass(classe.id)
+  if (studentsInClass.length > 0) {
+    showError('Erreur', 'Impossible de supprimer une classe qui contient des élèves.')
+    return
+  }
+  
+  showConfirm(
+    'Supprimer la classe',
+    `Êtes-vous sûr de vouloir supprimer la classe ${classe.name} ?`,
+    () => confirmDeleteClass(classe)
+  )
+}
+
+async function confirmDeleteClass(classe) {
+  try {
+    await classesStore.deleteClass(classe.id)
+    showSuccess('Succès', 'Classe supprimée avec succès')
+  } catch (error) {
+    showError('Erreur', 'Erreur lors de la suppression de la classe')
   }
 }
 
@@ -222,7 +325,8 @@ function resetForm() {
     name: '',
     level: '',
     section: '',
-    capacity: 30
+    capacity: 30,
+    subjects: []
   }
 }
 
@@ -230,14 +334,25 @@ async function saveClass() {
   loading.value = true
   
   try {
+    const data = {
+      name: classForm.value.name,
+      level: classForm.value.level,
+      section: classForm.value.section,
+      capacity: classForm.value.capacity,
+      subjectIds: classForm.value.subjects
+    }
+    
     if (editingClass.value) {
-      classesStore.updateClass(editingClass.value.id, { ...classForm.value })
+      await classesStore.updateClass(editingClass.value.id, data)
+      showSuccess('Succès', 'Classe modifiée avec succès')
     } else {
-      classesStore.addClass({ ...classForm.value })
+      await classesStore.addClass(data)
+      showSuccess('Succès', 'Classe ajoutée avec succès')
     }
     closeModal()
   } catch (error) {
     console.error('Erreur lors de la sauvegarde:', error)
+    showError('Erreur', 'Erreur lors de la sauvegarde de la classe')
   } finally {
     loading.value = false
   }
@@ -245,6 +360,29 @@ async function saveClass() {
 
 function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString('fr-FR')
+}
+
+function exportClassesPDF() {
+  const classesData = classesStore.classesWithStats.map(classe => ({
+    ...classe,
+    subjectNames: getSubjectNames(classe.Subjects).join(', ')
+  }))
+  
+  const pdfColumns = [
+    { key: 'name', label: 'Nom' },
+    { key: 'level', label: 'Niveau' },
+    { key: 'section', label: 'Section' },
+    { key: 'capacity', label: 'Capacite' },
+    { key: 'studentCount', label: 'Eleves' },
+    { key: 'subjectNames', label: 'Matieres' }
+  ]
+  
+  exportToPDF(
+    classesData,
+    'LISTE DES CLASSES',
+    pdfColumns,
+    'liste_classes'
+  )
 }
 </script>
 
@@ -255,5 +393,18 @@ function formatDate(dateString) {
 
 .main-content {
   @apply flex-1 flex flex-col overflow-hidden;
+}
+
+main {
+  /* Permet au main de prendre tout l'espace restant et scrollable */
+  @apply flex-1 overflow-auto;
+}
+
+.input-field {
+  @apply w-full rounded border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-primary-500;
+}
+
+.btn-primary {
+  @apply bg-primary-600 text-white px-4 py-2 rounded hover:bg-primary-700 transition-colors;
 }
 </style>

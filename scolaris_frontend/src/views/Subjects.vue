@@ -1,10 +1,8 @@
-<template>
+ <template>
   <div class="layout-container">
     <Sidebar :collapsed="sidebarCollapsed" @toggle-sidebar="sidebarCollapsed = !sidebarCollapsed" />
-    
-    <div class="main-content">
+    <div class="main-content overflow-auto"> <!-- Ajouté overflow-auto pour le scroll -->
       <Header />
-      
       <main class="p-6">
         <BaseTable
           :data="subjectsStore.subjects"
@@ -17,38 +15,40 @@
               Nouvelle Matière
             </button>
           </template>
-          
           <template #cell-coefficient="{ value }">
             <span class="bg-primary-100 text-primary-800 px-2 py-1 rounded-full text-sm font-medium">
               Coeff. {{ value }}
             </span>
           </template>
-          
           <template #cell-category="{ value }">
             <span :class="getCategoryClass(value)" class="px-2 py-1 rounded-full text-sm font-medium">
               {{ value }}
             </span>
           </template>
-          
+          <template #cell-classes="{ item }">
+            <div class="flex flex-wrap gap-1">
+              <span
+                v-for="className in getClassNames(item.Classes)"
+                :key="className"
+                class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs"
+              >
+                {{ className }}
+              </span>
+            </div>
+          </template>
           <template #row-actions="{ item }">
             <div class="flex gap-2">
-              <button
-                @click="editSubject(item)"
-                class="text-primary-600 hover:text-primary-900 transition-colors"
-              >
+              <button @click="editSubject(item)" class="text-primary-600 hover:text-primary-900 transition-colors">
                 <i class="fas fa-edit"></i>
               </button>
-              <button
-                @click="deleteSubject(item)"
-                class="text-danger-600 hover:text-danger-900 transition-colors"
-              >
+              <button @click="deleteSubject(item)" class="text-danger-600 hover:text-danger-900 transition-colors">
                 <i class="fas fa-trash"></i>
               </button>
             </div>
           </template>
         </BaseTable>
 
-        <!-- Add/Edit Modal -->
+        <!-- Modal Ajout/Édition -->
         <BaseModal
           :show="showAddModal || showEditModal"
           :title="editingSubject ? 'Modifier la Matière' : 'Nouvelle Matière'"
@@ -67,7 +67,6 @@
                 placeholder="Ex: Mathématiques"
               >
             </div>
-            
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Coefficient</label>
@@ -93,9 +92,44 @@
                   <option value="Arts">Arts</option>
                 </select>
               </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Classes concernées</label>
+                <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3">
+                  <label
+                    v-for="classe in classesStore.classes"
+                    :key="classe.id"
+                    class="flex items-center space-x-2"
+                  >
+                    <input
+                      type="checkbox"
+                      :value="classe.id"
+                      v-model="subjectForm.classes"
+                      class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    >
+                    <span class="text-sm">{{ classe.name }}</span>
+                  </label>
+                </div>
+              </div>
             </div>
           </form>
         </BaseModal>
+
+        <!-- Alert Modal -->
+        <AlertModal
+          :show="showAlert"
+          :type="alertConfig.type"
+          :title="alertConfig.title"
+          :message="alertConfig.message"
+          @close="closeAlert"
+          @confirm="confirmAlert"
+        />
+        
+        <!-- Loading Spinner -->
+        <LoadingSpinner 
+          :show="pageLoading" 
+          title="Chargement des matières" 
+          message="Récupération des données..."
+        />
       </main>
     </div>
   </div>
@@ -107,33 +141,54 @@ import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import BaseTable from '@/components/common/BaseTable.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
+import AlertModal from '@/components/common/AlertModal.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useSubjectsStore } from '@/stores/subjects'
 import { useAuthStore } from '@/stores/auth'
+import {useClassesStore} from '@/stores/classes'
+import { useAlert } from '@/composables/useAlert'
 
 const sidebarCollapsed = ref(false)
 const subjectsStore = useSubjectsStore()
 const authStore = useAuthStore()
+const classesStore = useClassesStore()
+const { showAlert, alertConfig, showSuccess, showError, showConfirm, closeAlert, confirmAlert } = useAlert()
 
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const loading = ref(false)
+const pageLoading = ref(true)
 const editingSubject = ref(null)
 
 const subjectForm = ref({
-  name: '',
+   name: '',
   coefficient: 1,
-  category: ''
+  category: '',
+  classes: []
 })
 
-onMounted(() => {
-  authStore.initAuth()
+onMounted(async () => {
+  try {
+    await authStore.initAuth()
+    await subjectsStore.fetchSubjects()
+  } finally {
+    setTimeout(() => {
+      pageLoading.value = false
+    }, 700)
+  }
 })
 
 const columns = [
   { key: 'name', label: 'Nom' },
   { key: 'coefficient', label: 'Coefficient' },
-  { key: 'category', label: 'Catégorie' }
+  { key: 'category', label: 'Catégorie' },
+  { key: 'classes', label: 'Classes' }
 ]
+
+function getClassNames(classes) {
+  if (!classes || !Array.isArray(classes)) return []
+  return classes.map(c => c.name)
+}
 
 function getCategoryClass(category) {
   const classes = {
@@ -149,13 +204,29 @@ function getCategoryClass(category) {
 
 function editSubject(subject) {
   editingSubject.value = subject
-  subjectForm.value = { ...subject }
+  subjectForm.value = {
+    name: subject.name,
+    coefficient: subject.coefficient,
+    category: subject.category,
+    classes: subject.Classes ? subject.Classes.map(c => c.id) : []
+  }
   showEditModal.value = true
 }
 
 function deleteSubject(subject) {
-  if (confirm(`Êtes-vous sûr de vouloir supprimer la matière ${subject.name} ?`)) {
-    subjectsStore.deleteSubject(subject.id)
+  showConfirm(
+    'Supprimer la matière',
+    `Êtes-vous sûr de vouloir supprimer la matière ${subject.name} ?`,
+    () => confirmDeleteSubject(subject)
+  )
+}
+
+async function confirmDeleteSubject(subject) {
+  try {
+    await subjectsStore.deleteSubject(subject.id)
+    showSuccess('Succès', 'Matière supprimée avec succès')
+  } catch (error) {
+    showError('Erreur', 'Erreur lors de la suppression de la matière')
   }
 }
 
@@ -170,22 +241,32 @@ function resetForm() {
   subjectForm.value = {
     name: '',
     coefficient: 1,
-    category: ''
+    category: '',
+    classes: []
   }
 }
 
 async function saveSubject() {
   loading.value = true
-  
   try {
+    const data = {
+      name: subjectForm.value.name,
+      coefficient: subjectForm.value.coefficient,
+      category: subjectForm.value.category,
+      classIds: subjectForm.value.classes
+    }
+    
     if (editingSubject.value) {
-      subjectsStore.updateSubject(editingSubject.value.id, { ...subjectForm.value })
+      await subjectsStore.updateSubject(editingSubject.value.id, data)
+      showSuccess('Succès', 'Matière modifiée avec succès')
     } else {
-      subjectsStore.addSubject({ ...subjectForm.value })
+      await subjectsStore.addSubject(data)
+      showSuccess('Succès', 'Matière ajoutée avec succès')
     }
     closeModal()
   } catch (error) {
     console.error('Erreur lors de la sauvegarde:', error)
+    showError('Erreur', 'Erreur lors de la sauvegarde de la matière')
   } finally {
     loading.value = false
   }
@@ -198,6 +279,6 @@ async function saveSubject() {
 }
 
 .main-content {
-  @apply flex-1 flex flex-col overflow-hidden;
+  @apply flex-1 flex flex-col overflow-auto;
 }
 </style>

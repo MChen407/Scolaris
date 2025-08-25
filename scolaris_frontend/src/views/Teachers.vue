@@ -16,14 +16,35 @@
               <i class="fas fa-plus mr-2"></i>
               Nouvel Enseignant
             </button>
+            <button @click="exportTeachersPDF" :disabled="isExporting" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50">
+              <i v-if="isExporting" class="fas fa-spinner fa-spin mr-2"></i>
+              <i v-else class="fas fa-file-pdf mr-2"></i>
+              Exporter PDF
+            </button>
           </template>
           
           <template #cell-subjectNames="{ value }">
-            <span class="text-sm">{{ value }}</span>
+            <div class="flex flex-wrap gap-1">
+              <span
+                v-for="subjectName in value.split(', ').filter(Boolean)"
+                :key="subjectName"
+                class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs"
+              >
+                {{ subjectName }}
+              </span>
+            </div>
           </template>
           
           <template #cell-classNames="{ value }">
-            <span class="text-sm text-gray-600">{{ value }}</span>
+            <div class="flex flex-wrap gap-1">
+              <span
+                v-for="className in value.split(', ').filter(Boolean)"
+                :key="className"
+                class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs"
+              >
+                {{ className }}
+              </span>
+            </div>
           </template>
           
           <template #row-actions="{ item }">
@@ -97,6 +118,18 @@
                   placeholder="Numéro de téléphone"
                 >
               </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Charge horaire (heures/semaine)</label>
+                <input
+                  v-model.number="teacherForm.weeklyHours"
+                  type="number"
+                  required
+                  min="0"
+                  max="40"
+                  class="input-field"
+                  placeholder="Nombre d'heures par semaine"
+                >
+              </div>
             </div>
             
             <div>
@@ -138,6 +171,23 @@
             </div>
           </form>
         </BaseModal>
+
+        <!-- Alert Modal -->
+        <AlertModal
+          :show="showAlert"
+          :type="alertConfig.type"
+          :title="alertConfig.title"
+          :message="alertConfig.message"
+          @close="closeAlert"
+          @confirm="confirmAlert"
+        />
+        
+        <!-- Loading Spinner -->
+        <LoadingSpinner 
+          :show="pageLoading" 
+          title="Chargement des enseignants" 
+          message="Récupération des données..."
+        />
       </main>
     </div>
   </div>
@@ -149,33 +199,48 @@ import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import BaseTable from '@/components/common/BaseTable.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
+import AlertModal from '@/components/common/AlertModal.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useTeachersStore } from '@/stores/teachers'
 import { useSubjectsStore } from '@/stores/subjects'
 import { useClassesStore } from '@/stores/classes'
 import { useAuthStore } from '@/stores/auth'
+import { usePDFExport } from '@/composables/usePDFExport'
+import { useAlert } from '@/composables/useAlert'
 
 const sidebarCollapsed = ref(false)
 const teachersStore = useTeachersStore()
 const subjectsStore = useSubjectsStore()
 const classesStore = useClassesStore()
 const authStore = useAuthStore()
+const { isExporting, exportToPDF } = usePDFExport()
+const { showAlert, alertConfig, showSuccess, showError, showConfirm, closeAlert, confirmAlert } = useAlert()
 
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const loading = ref(false)
+const pageLoading = ref(true)
 const editingTeacher = ref(null)
 
 const teacherForm = ref({
-  firstName: '',
+ firstName: '',
   lastName: '',
   email: '',
   phone: '',
   subjects: [],
-  classes: []
+  classes: [],
+  weeklyHours: 0
 })
 
-onMounted(() => {
-  authStore.initAuth()
+onMounted(async () => {
+  try {
+    await authStore.initAuth()
+    await teachersStore.fetchTeachers()
+  } finally {
+    setTimeout(() => {
+      pageLoading.value = false
+    }, 900)
+  }
 })
 
 const columns = [
@@ -183,6 +248,7 @@ const columns = [
   { key: 'lastName', label: 'Nom' },
   { key: 'email', label: 'Email' },
   { key: 'phone', label: 'Téléphone' },
+  { key: 'weeklyHours', label: 'Heures/semaine' },
   { key: 'subjectNames', label: 'Matières' },
   { key: 'classNames', label: 'Classes' }
 ]
@@ -190,26 +256,43 @@ const columns = [
 const teachersWithDetails = computed(() => {
   return teachersStore.teachers.map(teacher => ({
     ...teacher,
-    subjectNames: teacher.subjects
-      .map(id => subjectsStore.getSubjectById(id)?.name)
-      .filter(Boolean)
+    subjectNames: (teacher.Subjects || [])
+      .map(subject => subject.name)
       .join(', '),
-    classNames: teacher.classes
-      .map(id => classesStore.getClassById(id)?.name)
-      .filter(Boolean)
+    classNames: (teacher.Classes || [])
+      .map(classe => classe.name)
       .join(', ')
   }))
 })
 
 function editTeacher(teacher) {
   editingTeacher.value = teacher
-  teacherForm.value = { ...teacher }
+  teacherForm.value = {
+    firstName: teacher.firstName,
+    lastName: teacher.lastName,
+    email: teacher.email,
+    phone: teacher.phone,
+    weeklyHours: teacher.weeklyHours,
+    subjects: teacher.Subjects ? teacher.Subjects.map(s => s.id) : [],
+    classes: teacher.Classes ? teacher.Classes.map(c => c.id) : []
+  }
   showEditModal.value = true
 }
 
 function deleteTeacher(teacher) {
-  if (confirm(`Êtes-vous sûr de vouloir supprimer l'enseignant ${teacher.firstName} ${teacher.lastName} ?`)) {
-    teachersStore.deleteTeacher(teacher.id)
+  showConfirm(
+    'Supprimer l\'enseignant',
+    `Êtes-vous sûr de vouloir supprimer l'enseignant ${teacher.firstName} ${teacher.lastName} ?`,
+    () => confirmDeleteTeacher(teacher)
+  )
+}
+
+async function confirmDeleteTeacher(teacher) {
+  try {
+    await teachersStore.deleteTeacher(teacher.id)
+    showSuccess('Succès', 'Enseignant supprimé avec succès')
+  } catch (error) {
+    showError('Erreur', 'Erreur lors de la suppression de l\'enseignant')
   }
 }
 
@@ -227,7 +310,8 @@ function resetForm() {
     email: '',
     phone: '',
     subjects: [],
-    classes: []
+    classes: [],
+    weeklyHours: 0
   }
 }
 
@@ -235,17 +319,48 @@ async function saveTeacher() {
   loading.value = true
   
   try {
+    const data = {
+      firstName: teacherForm.value.firstName,
+      lastName: teacherForm.value.lastName,
+      email: teacherForm.value.email,
+      phone: teacherForm.value.phone,
+      subjectIds: teacherForm.value.subjects,
+      classIds: teacherForm.value.classes,
+      weeklyHours: teacherForm.value.weeklyHours
+    }
+
     if (editingTeacher.value) {
-      teachersStore.updateTeacher(editingTeacher.value.id, { ...teacherForm.value })
+      await teachersStore.updateTeacher(editingTeacher.value.id, data)
+      showSuccess('Succès', 'Enseignant modifié avec succès')
     } else {
-      teachersStore.addTeacher({ ...teacherForm.value })
+      await teachersStore.addTeacher(data)
+      showSuccess('Succès', 'Enseignant ajouté avec succès')
     }
     closeModal()
   } catch (error) {
     console.error('Erreur lors de la sauvegarde:', error)
+    showError('Erreur', 'Erreur lors de la sauvegarde de l\'enseignant')
   } finally {
     loading.value = false
   }
+}
+
+function exportTeachersPDF() {
+  const pdfColumns = [
+    { key: 'firstName', label: 'Prenom' },
+    { key: 'lastName', label: 'Nom' },
+    { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Telephone' },
+    { key: 'weeklyHours', label: 'Heures/sem' },
+    { key: 'subjectNames', label: 'Matieres' }
+  ]
+  
+  exportToPDF(
+    teachersWithDetails.value,
+    'LISTE DES ENSEIGNANTS',
+    pdfColumns,
+    'liste_enseignants'
+  )
 }
 </script>
 

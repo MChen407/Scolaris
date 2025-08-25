@@ -105,6 +105,7 @@ async function handleLogin() {
     
     if (success) {
       router.push('/')
+      router.push('/')
     } else {
       error.value = 'Nom d\'utilisateur ou mot de passe incorrect'
     }

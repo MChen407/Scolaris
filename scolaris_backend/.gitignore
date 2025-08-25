@@ -1,2 +1,2 @@
-node_modules
-scolaris_backend/src/config/scolaris.sqlite
+node_modules/
+./src/config/scolaris.sqlite
