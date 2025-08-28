@@ -88,7 +88,7 @@
         </div>
 
         <!-- Recent Activities -->
-        <div class="card bg-white p-6 rounded-lg shadow overflow-auto">
+        <!-- <div class="card bg-white p-6 rounded-lg shadow overflow-auto">
           <h3 class="text-lg font-semibold text-gray-900 mb-4">Activités Récentes</h3>
           <div class="space-y-4 max-h-96 overflow-auto">
             <div class="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
@@ -124,7 +124,7 @@
               <span class="text-xs text-gray-500">Il y a 2j</span>
             </div>
           </div>
-        </div>
+        </div> -->
       </main>
     </div>
   </div>

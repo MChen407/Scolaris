@@ -1,4 +1,4 @@
-import { Student, Classe, Subject, Grade, Payment, FeeType } from "../models/index.model.js";
+import { Student, Classe, Subject, Grade, Payment, FeeType, TeacherPayment  } from "../models/index.model.js";
 import { Op } from 'sequelize';
 
 export const getGeneralStats = async (req, res) => {
@@ -18,6 +18,13 @@ export const getGeneralStats = async (req, res) => {
         
         const payments = await Payment.findAll();
         const totalRevenue = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+
+        // Dépenses des professeurs
+        const teacherPayments = await TeacherPayment.findAll();
+        const totalTeacherExpenses = teacherPayments.reduce((sum, p) => sum + parseFloat(p.total), 0);
+        
+        // Bénéfice net
+        const netProfit = totalRevenue - totalTeacherExpenses;
         
         res.json({
             totalStudents,
@@ -26,7 +33,55 @@ export const getGeneralStats = async (req, res) => {
             overallAverage,
             successRate,
             totalRevenue,
-            totalPayments: payments.length
+            totalTeacherExpenses,
+            netProfit,
+            totalPayments: payments.length,
+            totalTeacherPayments: teacherPayments.length
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getFinancialStats = async (req, res) => {
+    try {
+        const { period = 'month' } = req.query;
+        
+        let dateFilter = {};
+        const now = new Date();
+        
+        if (period === 'month') {
+            dateFilter = {
+                [Op.gte]: new Date(now.getFullYear(), now.getMonth(), 1),
+                [Op.lt]: new Date(now.getFullYear(), now.getMonth() + 1, 1)
+            };
+        } else if (period === 'year') {
+            dateFilter = {
+                [Op.gte]: new Date(now.getFullYear(), 0, 1),
+                [Op.lt]: new Date(now.getFullYear() + 1, 0, 1)
+            };
+        }
+        
+        // Revenus par période
+        const payments = await Payment.findAll({
+            where: { date: dateFilter }
+        });
+        
+        // Dépenses professeurs par période
+        const teacherPayments = await TeacherPayment.findAll({
+            where: { date: dateFilter }
+        });
+        
+        const revenue = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+        const expenses = teacherPayments.reduce((sum, p) => sum + parseFloat(p.total), 0);
+        
+        res.json({
+            period,
+            revenue,
+            expenses,
+            profit: revenue - expenses,
+            paymentCount: payments.length,
+            teacherPaymentCount: teacherPayments.length
         });
     } catch (error) {
         res.status(500).json({ error: error.message });

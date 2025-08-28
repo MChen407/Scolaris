@@ -59,9 +59,9 @@
           <div class="card">
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-semibold text-gray-900">Répartition des Élèves par Classe</h3>
-              <button @click="exportStudentsPDF" class="text-blue-600 hover:text-blue-800">
+              <!-- <button @click="exportStudentsPDF" class="text-blue-600 hover:text-blue-800">
                 <i class="fas fa-file-pdf"></i>
-              </button>
+              </button> -->
             </div>
             <DoughnutChart
               :data="studentsByClass.map(s => s.count)"
@@ -162,6 +162,25 @@
                   <i class="fas fa-coins text-green-500 text-2xl"></i>
                 </div>
               </div>
+              <!-- Dépenses Professeurs -->
+              <div class="bg-red-500 text-white p-6 rounded-lg">
+                <h3 class="text-lg font-semibold">Dépenses Profs</h3>
+                <p class="text-2xl font-bold">{{ formatCurrency(generalStats.totalTeacherExpenses) }}</p>
+                <p class="text-sm opacity-80">{{ generalStats.totalTeacherPayments }} paiements</p>
+              </div>
+              <!-- Bénéfice Net -->
+                <div class="bg-blue-500 text-white p-6 rounded-lg">
+                  <h3 class="text-lg font-semibold">Bénéfice Net</h3>
+                  <p class="text-2xl font-bold">{{ formatCurrency(generalStats.netProfit) }}</p>
+                  <p class="text-sm opacity-80">{{ getProfitStatus() }}</p>
+                </div>
+
+                <!-- Marge -->
+                <div class="bg-purple-500 text-white p-6 rounded-lg">
+                  <h3 class="text-lg font-semibold">Marge</h3>
+                  <p class="text-2xl font-bold">{{ getProfitMargin() }}%</p>
+                  <p class="text-sm opacity-80">Rentabilité</p>
+                </div>
               <div class="grid grid-cols-2 gap-3">
                 <div class="bg-blue-50 p-3 rounded-lg text-center">
                   <p class="text-xs text-blue-600">Paiements</p>
@@ -180,6 +199,11 @@
                 <div class="bg-red-50 p-3 rounded-lg text-center">
                   <p class="text-xs text-red-600">En Retard</p>
                   <p class="text-lg font-bold text-red-700">{{ formatCurrency(financeStats.overdueAmount) }}</p>
+                </div>
+                <!-- Graphique financier -->
+                <div class="bg-white p-6 rounded-lg shadow">
+                  <h3 class="text-lg font-semibold mb-4">Évolution Financière</h3>
+                  <canvas ref="financialChart"></canvas>
                 </div>
               </div>
             </div>
@@ -251,6 +275,7 @@ import { useGradesStore } from '@/stores/grades'
 import { useFinanceStore } from '@/stores/finance'
 import { useStatisticsStore } from '@/stores/statistics'
 import { useAuthStore } from '@/stores/auth'
+import { Chart } from 'chart.js/auto'
 
 const sidebarCollapsed = ref(false)
 const studentsStore = useStudentsStore()
@@ -259,12 +284,56 @@ const subjectsStore = useSubjectsStore()
 const gradesStore = useGradesStore()
 const financeStore = useFinanceStore()
 const statisticsStore = useStatisticsStore()
+const financialChart = ref(null)
 const authStore = useAuthStore()
 
+// Ajoutez dans le script setup de Statistics.vue
+const generalStats = computed(() => statisticsStore.generalStats)
+
+function getProfitStatus() {
+  const profit = generalStats.value.netProfit || 0
+  return profit > 0 ? 'Bénéficiaire' : 'Déficitaire'
+}
+
+function getProfitMargin() {
+  const revenue = generalStats.value.totalRevenue || 0
+  const profit = generalStats.value.netProfit || 0
+  return revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : 0
+}
+
+function createFinancialChart() {
+  if (!financialChart.value) return
+  
+  const ctx = financialChart.value.getContext('2d')
+  
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Revenus', 'Dépenses', 'Bénéfice'],
+      datasets: [{
+        data: [
+          generalStats.value.totalRevenue || 0,
+          generalStats.value.totalTeacherExpenses || 0,
+          generalStats.value.netProfit || 0
+        ],
+        backgroundColor: ['#10b981', '#ef4444', '#3b82f6']
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } }
+    }
+  })
+}
+
+// Modifiez onMounted
 onMounted(async () => {
   await authStore.initAuth()
   await statisticsStore.fetchAllStats()
+  await statisticsStore.fetchGeneralStats()
+  setTimeout(() => createFinancialChart(), 100)
 })
+
 
 const colors = [
   '#3B82F6', '#10B981', '#F59E0B', '#EF4444', 

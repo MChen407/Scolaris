@@ -4,12 +4,14 @@ import {
     getStudentsByClass,
     getAveragesBySubject,
     getClassPerformance,
-    getTop3StudentsByClass
+    getTop3StudentsByClass,
+    getFinancialStats
 } from '../controllers/statistics.controller.js';
 
 const router = express.Router();
 
 router.get('/general', getGeneralStats);
+router.get('/financial', getFinancialStats); 
 router.get('/students-by-class', getStudentsByClass);
 router.get('/averages-by-subject', getAveragesBySubject);
 router.get('/class-performance', getClassPerformance);
