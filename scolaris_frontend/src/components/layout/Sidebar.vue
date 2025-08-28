@@ -19,10 +19,10 @@
     <!-- SECTION LOGO ET TITRE -->
     <div class="p-4 border-b border-gray-200">
       <div class="flex items-center">
-        <!-- Icône de l'application -->
-        <div class="bg-primary-600 text-white rounded-lg p-2">
-          <i class="fas fa-graduation-cap text-xl"></i>
-        </div>
+        <!-- Logo de l'application -->
+        <!-- <div class="rounded-lg p-1 border"> -->
+          <img src="@/assets/logo.png" alt="Scolaris" class="w-10 h-10 rounded">
+        <!-- </div> -->
         
         <!-- Titre avec animation de fondu -->
         <Transition name="fade">

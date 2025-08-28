@@ -55,6 +55,28 @@
               </div>
             </div>
           </div>
+          <div class="bg-gradient-to-br from-indigo-400 to-indigo-600 text-white rounded-lg shadow-lg p-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mb-3">
+                  <i class="fas fa-users text-white text-xl"></i>
+                </div>
+                <p class="text-2xl font-bold text-white">{{ formatCurrency(generalStats.totalTeacherExpenses) }}</p>
+                <p class="text-sm text-blue-100">Salaires Professeurs</p>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-lg shadow-lg p-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mb-3">
+                  <i class="fas fa-coins text-white text-xl"></i>
+                </div>
+                <p :class="generalStats.netProfit >= 0 ? 'text-zinc-600' : 'text-danger-600'" class="text-2xl font-bold text-white"> {{ formatCurrency(generalStats.netProfit) }}</p>
+                <p class="text-sm text-blue-100">Bénéfice Net</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Payment Management -->
@@ -67,10 +89,10 @@
                   <i class="fas fa-plus mr-2"></i>
                   Nouveau paiement
                 </button>
-                <button @click="generateReport" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                <!-- <button @click="generateReport" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
                   <i class="fas fa-file-pdf mr-2"></i>
                   Générer reçu
-                </button>
+                </button> -->
               </div>
             </div>
           </div>
@@ -154,9 +176,9 @@
           <!-- Action Buttons -->
           <div class="p-6 border-t border-gray-200">
             <div class="flex gap-3">
-              <button @click="generatePDFReport" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+              <!-- <button @click="generatePDFReport" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
                 Générer reçu PDF
-              </button>
+              </button> -->
               <button @click="viewPaymentHistory" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
                 Voir historique des paiements
               </button>
@@ -507,6 +529,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useTeachersStore } from '@/stores/teachers'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { useStatisticsStore } from '@/stores/statistics'
+import { Chart } from 'chart.js/auto'
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('fr-FR', {
@@ -518,6 +542,40 @@ function formatCurrency(amount) {
 
 function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString('fr-FR')
+}
+
+const statisticsStore = useStatisticsStore()
+const revenueExpenseChart = ref(null)
+const generalStats = computed(() => statisticsStore.generalStats)
+
+function getProfitMargin() {
+  const revenue = generalStats.value.totalRevenue || 0
+  const profit = generalStats.value.netProfit || 0
+  return revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : 0
+}
+
+function createRevenueExpenseChart() {
+  if (!revenueExpenseChart.value) return
+  
+  const ctx = revenueExpenseChart.value.getContext('2d')
+  
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Revenus Étudiants', 'Dépenses Professeurs'],
+      datasets: [{
+        data: [
+          generalStats.value.totalRevenue || 0,
+          generalStats.value.totalTeacherExpenses || 0
+        ],
+        backgroundColor: ['#10b981', '#ef4444']
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false
+    }
+  })
 }
 
 const sidebarCollapsed = ref(false)
@@ -620,6 +678,8 @@ const calculateTeacherTotal = computed(() => {
 onMounted(async () => {
   try {
     await authStore.initAuth()
+    await statisticsStore.fetchGeneralStats()
+    setTimeout(() => createRevenueExpenseChart(), 100)
     await financeStore.fetchPayments()
     await financeStore.fetchFeeTypes()
     await teachersStore.fetchTeachers()

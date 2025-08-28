@@ -1,0 +1,17 @@
+{
+  "name": "scolaris",
+  "private": true,
+  "workspaces": [
+    "scolaris_frontend",
+    "scolaris_backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w scolaris_frontend\" \"npm run dev -w scolaris_backend\"",
+    "build": "npm run build -w scolaris_frontend",
+    "electron": "npm run electron -w scolaris_frontend",
+    "dist": "npm run dist -w scolaris_frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

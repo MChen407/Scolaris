@@ -6,7 +6,7 @@
  */
 
 // Importation des dépendances Vue Router
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 // Store d'authentification pour vérifier les permissions
 import { useAuthStore } from '@/stores/auth.js'
 
@@ -97,7 +97,7 @@ const routes = [
 
 // Création de l'instance du routeur avec l'historique HTML5
 const router = createRouter({
-  history: createWebHistory(), // Utilise l'API History du navigateur
+  history: createWebHashHistory(), // Utilise le hash history pour Electron
   routes
 })
 

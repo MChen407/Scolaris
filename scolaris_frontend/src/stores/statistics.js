@@ -4,14 +4,35 @@ import axios from 'axios'
 
 export const useStatisticsStore = defineStore('statistics', () => {
   const generalStats = ref({})
+  const financialStats = ref({})
+  const loading = ref(false)
   const studentsByClass = ref([])
   const averagesBySubject = ref([])
   const classPerformance = ref([])
   const top3StudentsByClass = ref([])
 
   async function fetchGeneralStats() {
-    const res = await axios.get('http://localhost:3000/api/statistics/general')
-    generalStats.value = res.data
+    loading.value = true
+    try {
+      const response = await axios.get('http://localhost:3000/api/statistics/general')
+      generalStats.value = response.data
+    } catch (error) {
+      console.error('Erreur:', error)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchFinancialStats(period = 'month') {
+    loading.value = true
+    try {
+      const response = await axios.get(`http://localhost:3000/api/statistics/financial?period=${period}`)
+      financialStats.value = response.data
+    } catch (error) {
+      console.error('Erreur:', error)
+    } finally {
+      loading.value = false
+    }
   }
 
   async function fetchStudentsByClass() {
@@ -46,6 +67,9 @@ export const useStatisticsStore = defineStore('statistics', () => {
 
   return {
     generalStats,
+    financialStats,
+    loading,
+    fetchFinancialStats,
     studentsByClass,
     averagesBySubject,
     classPerformance,

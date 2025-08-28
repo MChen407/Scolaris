@@ -93,6 +93,12 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Niveau</label>
                 <select v-model="classForm.level" required class="input-field">
                   <option value="">Sélectionner</option>
+                  <option value="CI">CI</option>
+                  <option value="CP">CP</option>
+                  <option value="CE1">CE1</option>
+                  <option value="CE2">CE2</option>
+                  <option value="CM1">CM1</option>
+                  <option value="CM2">CM2</option>
                   <option value="6ème">6ème</option>
                   <option value="5ème">5ème</option>
                   <option value="4ème">4ème</option>
