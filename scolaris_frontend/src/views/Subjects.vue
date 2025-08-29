@@ -15,10 +15,22 @@
               Nouvelle Matière
             </button>
           </template>
-          <template #cell-coefficient="{ value }">
-            <span class="bg-primary-100 text-primary-800 px-2 py-1 rounded-full text-sm font-medium">
-              Coeff. {{ value }}
-            </span>
+          <template #cell-coefficients="{ item }">
+            <div class="space-y-1">
+              <div v-if="getSubjectCoefficients(item.id).length === 0" class="text-gray-500 text-sm">
+                Aucun coefficient défini
+              </div>
+              <div v-else class="flex flex-wrap gap-1">
+                <span
+                  v-for="coeff in getSubjectCoefficients(item.id)"
+                  :key="coeff.className"
+                  class="px-2 py-1 rounded-full text-xs font-medium"
+                  :class="getCoefficientBadgeClass(coeff.coefficient)"
+                >
+                  {{ coeff.className }}: {{ coeff.coefficient }}
+                </span>
+              </div>
+            </div>
           </template>
           <template #cell-category="{ value }">
             <span :class="getCategoryClass(value)" class="px-2 py-1 rounded-full text-sm font-medium">
@@ -167,10 +179,14 @@ const subjectForm = ref({
   classes: []
 })
 
+const allCoefficients = ref({})
+
 onMounted(async () => {
   try {
     await authStore.initAuth()
     await subjectsStore.fetchSubjects()
+    await classesStore.fetchClasses()
+    await loadAllCoefficients()
   } finally {
     setTimeout(() => {
       pageLoading.value = false
@@ -180,8 +196,8 @@ onMounted(async () => {
 
 const columns = [
   { key: 'name', label: 'Nom' },
-  { key: 'coefficient', label: 'Coefficient' },
   { key: 'category', label: 'Catégorie' },
+  { key: 'coefficients', label: 'Coefficients par Classe' },
   { key: 'classes', label: 'Classes' }
 ]
 
@@ -200,6 +216,59 @@ function getCategoryClass(category) {
     'Arts': 'bg-pink-100 text-pink-800'
   }
   return classes[category] || 'bg-gray-100 text-gray-800'
+}
+
+function getCoefficientBadgeClass(coefficient) {
+  if (coefficient <= 1) return 'bg-green-100 text-green-800'
+  if (coefficient <= 2) return 'bg-blue-100 text-blue-800'
+  if (coefficient <= 3) return 'bg-yellow-100 text-yellow-800'
+  if (coefficient <= 4) return 'bg-orange-100 text-orange-800'
+  return 'bg-red-100 text-red-800'
+}
+
+async function loadAllCoefficients() {
+  try {
+    const promises = classesStore.classes.map(async (classe) => {
+      try {
+        const response = await fetch(`http://localhost:3000/api/coefficients/class/${classe.id}`)
+        if (response.ok) {
+          const coeffs = await response.json()
+          return { classId: classe.id, className: classe.name, coefficients: coeffs }
+        }
+      } catch (error) {
+        console.log(`Pas de coefficients pour ${classe.name}`)
+      }
+      return { classId: classe.id, className: classe.name, coefficients: [] }
+    })
+    
+    const results = await Promise.all(promises)
+    
+    allCoefficients.value = {}
+    results.forEach(result => {
+      allCoefficients.value[result.classId] = {
+        name: result.className,
+        coefficients: result.coefficients
+      }
+    })
+  } catch (error) {
+    console.error('Erreur chargement coefficients:', error)
+  }
+}
+
+function getSubjectCoefficients(subjectId) {
+  const coefficients = []
+  
+  Object.entries(allCoefficients.value).forEach(([classId, classData]) => {
+    const subjectCoeff = classData.coefficients.find(c => c.subjectId === subjectId)
+    if (subjectCoeff && subjectCoeff.coefficient > 0) {
+      coefficients.push({
+        className: classData.name,
+        coefficient: subjectCoeff.coefficient
+      })
+    }
+  })
+  
+  return coefficients.sort((a, b) => a.className.localeCompare(b.className))
 }
 
 function editSubject(subject) {

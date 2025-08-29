@@ -6,8 +6,33 @@
       <Header />
       
       <main class="p-6 flex-1 overflow-auto">
+        <!-- Filtres par niveau -->
+        <div class="mb-6 flex gap-4">
+          <button 
+            @click="selectedNiveau = null" 
+            :class="selectedNiveau === null ? 'bg-blue-600 text-white' : 'bg-gray-200'"
+            class="px-4 py-2 rounded"
+          >
+            Toutes
+          </button>
+          <button 
+            @click="selectedNiveau = 'Primaire'" 
+            :class="selectedNiveau === 'Primaire' ? 'bg-blue-600 text-white' : 'bg-gray-200'"
+            class="px-4 py-2 rounded"
+          >
+            Primaire
+          </button>
+          <button 
+            @click="selectedNiveau = 'Secondaire'" 
+            :class="selectedNiveau === 'Secondaire' ? 'bg-blue-600 text-white' : 'bg-gray-200'"
+            class="px-4 py-2 rounded"
+          >
+            Secondaire
+          </button>
+        </div>
+
         <BaseTable
-          :data="classesStore.classesWithStats"
+          :data="filteredClasses"
           :columns="columns"
           title="Liste des Classes"
         >
@@ -26,6 +51,12 @@
           <template #cell-studentCount="{ value }">
             <span class="bg-primary-100 text-primary-800 px-2 py-1 rounded-full text-sm font-medium">
               {{ value }} élèves
+            </span>
+          </template>
+          <template #cell-niveau="{ value }">
+            <span :class="value === 'Primaire' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'" 
+                  class="px-2 py-1 rounded-full text-xs">
+              {{ value }}
             </span>
           </template>
           <template #cell-subjects="{ item }">
@@ -55,6 +86,13 @@
                 title="Voir les élèves"
               >
                 <i class="fas fa-users"></i>
+              </button>
+              <button
+                @click="manageCoefficients(item)"
+                class="text-purple-600 hover:text-purple-900 transition-colors"
+                title="Gérer les coefficients"
+              >
+                <i class="fas fa-calculator"></i>
               </button>
               <button
                 @click="deleteClass(item)"
@@ -88,9 +126,9 @@
               >
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Niveau</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Niveau Scolaire</label>
                 <select v-model="classForm.level" required class="input-field">
                   <option value="">Sélectionner</option>
                   <option value="CI">CI</option>
@@ -110,12 +148,20 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Section</label>
-                <select v-model="classForm.section" required class="input-field">
-                  <option value="">Sélectionner</option>
+                <select v-model="classForm.section" class="input-field">
+                  <option value="">Optionnel</option>
                   <option value="A">A</option>
                   <option value="B">B</option>
                   <option value="C">C</option>
                   <option value="D">D</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Niveau</label>
+                <select v-model="classForm.niveau" required class="input-field">
+                  <option value="">Sélectionner niveau</option>
+                  <option value="Primaire">Primaire</option>
+                  <option value="Secondaire">Secondaire</option>
                 </select>
               </div>
             </div>
@@ -151,6 +197,53 @@
               </div>
             </div>
           </form>
+        </BaseModal>
+
+        <!-- Coefficients Modal -->
+        <BaseModal
+          :show="showCoefficientsModal"
+          :title="`Coefficients - ${selectedClass?.name || ''}`"
+          @close="showCoefficientsModal = false"
+          @confirm="saveCoefficients"
+          :loading="loadingCoefficients"
+        >
+          <div class="space-y-4 max-h-96 overflow-auto">
+            <div
+              v-for="subject in subjectsStore.subjects"
+              :key="subject.id"
+              class="flex items-center justify-between p-3 rounded-lg border-l-4"
+              :class="getSubjectCardClass(subject.id)"
+            >
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <h4 class="font-medium text-gray-900">{{ subject.name }}</h4>
+                  <span 
+                    v-if="coefficients[subject.id] > 0"
+                    class="px-2 py-1 text-xs rounded-full font-medium"
+                    :class="getCoefficientBadgeClass(coefficients[subject.id])"
+                  >
+                    Coeff: {{ coefficients[subject.id] }}
+                  </span>
+                </div>
+                <p class="text-sm text-gray-600">{{ subject.category }}</p>
+                <div class="text-xs text-gray-500 mt-1">
+                  <span class="font-medium">{{ getClassesUsingSubject(subject.id) }}</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <label class="text-sm text-gray-600">Coefficient:</label>
+                <input
+                  v-model.number="coefficients[subject.id]"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  class="w-20 px-2 py-1 border rounded text-center"
+                  :class="getCoefficientInputClass(coefficients[subject.id])"
+                  placeholder="0"
+                >
+              </div>
+            </div>
+          </div>
         </BaseModal>
 
         <!-- Students List Modal -->
@@ -217,6 +310,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useSubjectsStore } from '@/stores/subjects'
 import { usePDFExport } from '@/composables/usePDFExport'
 import { useAlert } from '@/composables/useAlert'
+import axios from 'axios'
 
 const sidebarCollapsed = ref(false)
 const classesStore = useClassesStore()
@@ -234,17 +328,27 @@ function getSubjectNames(subjects) {
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showStudentsModal = ref(false)
+const showCoefficientsModal = ref(false)
 const loading = ref(false)
+const loadingCoefficients = ref(false)
 const pageLoading = ref(true)
 const editingClass = ref(null)
 const selectedClass = ref(null)
+const coefficients = ref({})
+const allClassCoefficients = ref({})
 
 const classForm = ref({
   name: '',
   level: '',
   section: '',
   capacity: 30,
+  niveau: '',
   subjects: []
+})
+
+const filteredClasses = computed(() => {
+  if (!selectedNiveau.value) return classesStore.classesWithStats
+  return classesStore.classesWithStats.filter(c => c.niveau === selectedNiveau.value)
 })
 
 onMounted(async () => {
@@ -258,10 +362,13 @@ onMounted(async () => {
   }
 })
 
+const selectedNiveau = ref(null)
+
 const columns = [
   { key: 'name', label: 'Nom' },
-  { key: 'level', label: 'Niveau' },
+  { key: 'level', label: 'Niveau Scolaire' },
   { key: 'section', label: 'Section' },
+  { key: 'niveau', label: 'Niveau' },
   { key: 'capacity', label: 'Capacité' },
   { key: 'studentCount', label: 'Élèves inscrits' },
   {key: 'subjects', label: 'Matières'}
@@ -285,6 +392,7 @@ function editClass(classe) {
     level: classe.level,
     section: classe.section,
     capacity: classe.capacity,
+    niveau: classe.niveau,
     subjects: classe.Subjects ? classe.Subjects.map(s => s.id) : []
   }
   showEditModal.value = true
@@ -294,6 +402,125 @@ function editClass(classe) {
 function viewStudents(classe) {
   selectedClass.value = classe
   showStudentsModal.value = true
+}
+
+async function manageCoefficients(classe) {
+  selectedClass.value = classe
+  loadingCoefficients.value = true
+  
+  try {
+    // Charger les coefficients existants pour cette classe
+    const response = await axios.get(`http://localhost:3000/api/coefficients/class/${classe.id}`)
+    const existingCoeffs = response.data
+    
+    // Charger tous les coefficients pour toutes les classes
+    const allClassesPromises = classesStore.classes.map(async (c) => {
+      try {
+        const coeffsResponse = await axios.get(`http://localhost:3000/api/coefficients/class/${c.id}`)
+        return { classId: c.id, className: c.name, coefficients: coeffsResponse.data }
+      } catch (error) {
+        return { classId: c.id, className: c.name, coefficients: [] }
+      }
+    })
+    
+    const allClassesData = await Promise.all(allClassesPromises)
+    
+    allClassCoefficients.value = {}
+    allClassesData.forEach(classData => {
+      allClassCoefficients.value[classData.classId] = {
+        name: classData.className,
+        coefficients: classData.coefficients
+      }
+    })
+    
+    // Initialiser les coefficients
+    coefficients.value = {}
+    subjectsStore.subjects.forEach(subject => {
+      const existing = existingCoeffs.find(c => c.subjectId === subject.id)
+      coefficients.value[subject.id] = existing ? existing.coefficient : 0
+    })
+    
+    showCoefficientsModal.value = true
+  } catch (error) {
+    console.error('Erreur lors du chargement des coefficients:', error)
+  } finally {
+    loadingCoefficients.value = false
+  }
+}
+
+async function saveCoefficients() {
+  loadingCoefficients.value = true
+  
+  try {
+    // Sauvegarder chaque coefficient
+    for (const [subjectId, coefficient] of Object.entries(coefficients.value)) {
+      if (coefficient > 0) {
+        await axios.post('http://localhost:3000/api/coefficients', {
+          classId: selectedClass.value.id,
+          subjectId: parseInt(subjectId),
+          coefficient: parseFloat(coefficient)
+        })
+      }
+    }
+    
+    showSuccess('Succès', 'Coefficients sauvegardés avec succès')
+    showCoefficientsModal.value = false
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde:', error)
+    showError('Erreur', 'Erreur lors de la sauvegarde des coefficients')
+  } finally {
+    loadingCoefficients.value = false
+  }
+}
+
+function getSubjectCardClass(subjectId) {
+  const coeff = coefficients.value[subjectId] || 0
+  if (coeff === 0) return 'bg-gray-50 border-gray-300'
+  if (coeff <= 1) return 'bg-green-50 border-green-400'
+  if (coeff <= 2) return 'bg-blue-50 border-blue-400'
+  if (coeff <= 3) return 'bg-yellow-50 border-yellow-400'
+  if (coeff <= 4) return 'bg-orange-50 border-orange-400'
+  return 'bg-red-50 border-red-400'
+}
+
+function getCoefficientBadgeClass(coefficient) {
+  if (coefficient <= 1) return 'bg-green-100 text-green-800'
+  if (coefficient <= 2) return 'bg-blue-100 text-blue-800'
+  if (coefficient <= 3) return 'bg-yellow-100 text-yellow-800'
+  if (coefficient <= 4) return 'bg-orange-100 text-orange-800'
+  return 'bg-red-100 text-red-800'
+}
+
+function getCoefficientInputClass(coefficient) {
+  if (!coefficient || coefficient === 0) return 'border-gray-300'
+  if (coefficient <= 1) return 'border-green-400 bg-green-50'
+  if (coefficient <= 2) return 'border-blue-400 bg-blue-50'
+  if (coefficient <= 3) return 'border-yellow-400 bg-yellow-50'
+  if (coefficient <= 4) return 'border-orange-400 bg-orange-50'
+  return 'border-red-400 bg-red-50'
+}
+
+function getClassesUsingSubject(subjectId) {
+  const classesUsing = []
+  const coefficientsUsed = new Set()
+  
+  Object.entries(allClassCoefficients.value).forEach(([classId, classData]) => {
+    const subjectCoeff = classData.coefficients.find(c => c.subjectId === subjectId)
+    if (subjectCoeff && subjectCoeff.coefficient > 0) {
+      classesUsing.push(`${classData.name} (${subjectCoeff.coefficient})`)
+      coefficientsUsed.add(subjectCoeff.coefficient)
+    }
+  })
+  
+  if (classesUsing.length === 0) return 'Aucune'
+  
+  // Afficher les coefficients uniques en premier
+  const uniqueCoeffs = Array.from(coefficientsUsed).sort((a, b) => a - b)
+  const coeffsText = uniqueCoeffs.length > 1 
+    ? `Coefficients: ${uniqueCoeffs.join(', ')} | ` 
+    : `Coefficient: ${uniqueCoeffs[0]} | `
+  
+  return coeffsText + classesUsing.join(', ')
 }
 
 function deleteClass(classe) {
@@ -332,6 +559,7 @@ function resetForm() {
     level: '',
     section: '',
     capacity: 30,
+    niveau: '',
     subjects: []
   }
 }
@@ -345,6 +573,7 @@ async function saveClass() {
       level: classForm.value.level,
       section: classForm.value.section,
       capacity: classForm.value.capacity,
+      niveau: classForm.value.niveau,
       subjectIds: classForm.value.subjects
     }
     
@@ -369,15 +598,19 @@ function formatDate(dateString) {
 }
 
 function exportClassesPDF() {
-  const classesData = classesStore.classesWithStats.map(classe => ({
+  const classesData = filteredClasses.value.map(classe => ({
     ...classe,
     subjectNames: getSubjectNames(classe.Subjects).join(', ')
   }))
   
+  const title = selectedNiveau.value ? `CLASSES - ${selectedNiveau.value}` : 'TOUTES LES CLASSES'
+  const filename = selectedNiveau.value ? `classes_${selectedNiveau.value.toLowerCase()}` : 'toutes_classes'
+  
   const pdfColumns = [
     { key: 'name', label: 'Nom' },
-    { key: 'level', label: 'Niveau' },
+    { key: 'level', label: 'Niveau Scolaire' },
     { key: 'section', label: 'Section' },
+    { key: 'niveau', label: 'Niveau' },
     { key: 'capacity', label: 'Capacite' },
     { key: 'studentCount', label: 'Eleves' },
     { key: 'subjectNames', label: 'Matieres' }
@@ -385,9 +618,9 @@ function exportClassesPDF() {
   
   exportToPDF(
     classesData,
-    'LISTE DES CLASSES',
+    title,
     pdfColumns,
-    'liste_classes'
+    filename
   )
 }
 </script>

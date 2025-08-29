@@ -16,9 +16,14 @@ export const useStudentsStore = defineStore('students', () => {
   const students = ref([])
 
   // Charger tous les élèves depuis le backend
-  async function fetchStudents() {
-    const res = await axios.get('http://localhost:3000/api/students')
-    students.value = res.data
+  async function fetchStudents(niveau = null) {
+    try {
+      const url = niveau ? `/api/students?niveau=${niveau}` : '/api/students'
+      const res = await axios.get(`http://localhost:3000${url}`)
+      students.value = res.data
+    } catch (error) {
+      console.error('Erreur:', error)
+    }
   }
 
   // Ajouter un élève
@@ -61,12 +66,21 @@ export const useStudentsStore = defineStore('students', () => {
     return students.value.filter(s => s.classId === classId)
   }
 
+  // Élèves par niveau
+  const studentsByNiveau = computed(() => {
+    return {
+      Primaire: students.value.filter(s => s.Classe?.niveau === 'Primaire'),
+      Secondaire: students.value.filter(s => s.Classe?.niveau === 'Secondaire')
+    }
+  })
+
   // Charger les élèves au démarrage
   fetchStudents()
 
   return {
     students,
     studentsByClass,
+    studentsByNiveau,
     fetchStudents,
     addStudent,
     updateStudent,

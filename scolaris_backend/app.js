@@ -5,6 +5,7 @@ import teacherRoutes from "./src/routes/teacher.route.js";
 import gradesRoutes from "./src/routes/grades.routes.js";
 import financeRoutes from "./src/routes/finance.routes.js";
 import statisticsRoutes from "./src/routes/statistics.routes.js";
+import coefficientRoutes from "./src/routes/classSubjectCoefficient.routes.js";
 
 import cors from "cors";
 import express from "express";
@@ -21,8 +22,10 @@ app.use(express.json());
 
 // Middleware CORS pour autoriser mon frontend
 app.use(cors({
-  origin: ["http://localhost:5174", "http://localhost:5175"],
-  credentials: true
+  origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 
@@ -33,6 +36,7 @@ app.use("/api/teachers", teacherRoutes);
 app.use("/api/grades", gradesRoutes);
 app.use("/api/finance", financeRoutes);
 app.use("/api/statistics", statisticsRoutes);
+app.use("/api/coefficients", coefficientRoutes);
 
 
 // Synchroniser la base de données et démarrer le serveur

@@ -71,6 +71,12 @@ export const useFinanceStore = defineStore('finance', () => {
     return res.data
   }
 
+  // Récupérer l'historique des paiements d'un enseignant
+  async function getTeacherPaymentHistory(teacherId) {
+    const res = await axios.get(`http://localhost:3000/api/finance/teacher-payments/history/${teacherId}`)
+    return res.data
+  }
+
   const totalRevenue = computed(() => {
     return payments.value.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0)
   })
@@ -92,6 +98,7 @@ export const useFinanceStore = defineStore('finance', () => {
     addFeeType,
     fetchStats,
     addTeacherPayment,
-    fetchTeacherPayments
+    fetchTeacherPayments,
+    getTeacherPaymentHistory
   }
 })

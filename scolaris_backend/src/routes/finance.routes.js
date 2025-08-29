@@ -9,6 +9,8 @@ import {
     getFinanceStats,
     createTeacherPayment,
     getTeacherPayments,
+    getTeacherPaymentHistory,
+    getTeacherStats,
     getFeeTypes
 } from '../controllers/finance.controller.js';
 
@@ -25,5 +27,7 @@ router.get('/fee-types', getFeeTypes);
 // router.post('/fee-types', createFeeType);
 router.post('/teacher-payments', createTeacherPayment);
 router.get('/teacher-payments', getTeacherPayments);
+router.get('/teacher-payments/history/:teacherId', getTeacherPaymentHistory);
+router.get('/teacher-stats', getTeacherStats);
 
 export default router;

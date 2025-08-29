@@ -24,11 +24,11 @@ module.exports = {
       },
       phone: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
       },
       weeklyHours: {
         type: Sequelize.INTEGER,
-        allowNull: false
+        allowNull: true
       },
       hireDate: {
         type: Sequelize.DATEONLY,

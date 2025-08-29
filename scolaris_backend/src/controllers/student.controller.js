@@ -1,16 +1,32 @@
-import Student from "../models/student.model.js";
+import { Student, Classe } from "../models/index.model.js";
 
 // Récupérer tous les élèves
 export const getAllStudents = async (req, res) => {
-    const students = await Student.findAll();
-    console.log("Students from DB:", students);
-    res.json(students);
+    try {
+        const { niveau } = req.query;
+        let whereClause = {};
+        
+        if (niveau) {
+            const classes = await Classe.findAll({ where: { niveau } });
+            const classIds = classes.map(c => c.id);
+            whereClause.classId = classIds;
+        }
+        
+        const students = await Student.findAll({
+            where: whereClause,
+            include: [{ model: Classe, attributes: ['name', 'niveau'] }],
+            order: [['firstName', 'ASC']]
+        });
+        res.json(students);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 };
 
 // Créer un nouvel élève
 export const createStudent = async(req, res) => {
     try {
-        const {firstName, lastName, gender, birthDate, guardian, phone, classId, enrollmentStatus, documents} = req.body;
+        const {firstName, lastName, gender, birthDate, guardian, phone, address, parentName, parentPhone, classId, enrollmentStatus, documents} = req.body;
         const student = await Student.create({
             firstName, 
             lastName, 
@@ -18,9 +34,12 @@ export const createStudent = async(req, res) => {
             birthDate, 
             guardian, 
             phone, 
+            address,
+            parentName,
+            parentPhone,
             classId, 
             enrollmentDate: new Date().toISOString().split('T')[0],
-            enrollmentStatus: enrollmentStatus || 'pending',
+            enrollmentStatus: enrollmentStatus || 'active',
             documents: documents || {
                 birthCertificate: false,
                 medicalCertificate: false,
@@ -39,7 +58,7 @@ export const createStudent = async(req, res) => {
 export const updateStudent = async(req, res) => {
     try {
         const {id} = req.params;
-        const {firstName, lastName, gender, birthDate, guardian, phone, classId, enrollmentStatus, documents} = req.body;
+        const {firstName, lastName, gender, birthDate, guardian, phone, address, parentName, parentPhone, classId, enrollmentStatus, documents} = req.body;
         const student = await Student.findByPk(id);
         if(!student) return res.status(404).json({error: "Aucun élève trouvé"})
         await student.update({
@@ -49,6 +68,9 @@ export const updateStudent = async(req, res) => {
             birthDate, 
             guardian, 
             phone, 
+            address,
+            parentName,
+            parentPhone,
             classId, 
             enrollmentStatus,
             ...(documents && { documents })

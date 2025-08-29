@@ -18,9 +18,25 @@ export const useClassesStore = defineStore('classes', () => {
     }))
   })
 
-  async function fetchClasses() {
-    const res = await axios.get('http://localhost:3000/api/classes')
-    classes.value = res.data
+  const classesByNiveau = computed(() => {
+    return {
+      Primaire: classes.value.filter(c => c.niveau === 'Primaire'),
+      Secondaire: classes.value.filter(c => c.niveau === 'Secondaire')
+    }
+  })
+
+  async function fetchClasses(niveau = null) {
+    try {
+      const url = niveau ? `/api/classes?niveau=${niveau}` : '/api/classes'
+      const res = await axios.get(`http://localhost:3000${url}`)
+      classes.value = res.data
+    } catch (error) {
+      console.error('Erreur de connexion au serveur:', error.message)
+      if (error.code === 'ERR_NETWORK') {
+        alert('Impossible de se connecter au serveur. Vérifiez que le backend est démarré sur le port 3000.')
+      }
+      throw error
+    }
   }
 
   async function addClass(classData) {
@@ -50,6 +66,7 @@ export const useClassesStore = defineStore('classes', () => {
   return {
     classes,
     classesWithStats,
+    classesByNiveau,
     fetchClasses,
     addClass,
     updateClass,
