@@ -624,9 +624,27 @@ async function exportTeacherHistoryPDF(teacherId) {
 
     const teacher = teachersStore.getTeacherById(teacherId) || { firstName: '', lastName: '' }
     const doc = new jsPDF('p', 'mm', 'a4')
-    const title = `Historique paiements - ${teacher.firstName} ${teacher.lastName}`
+    
+    // Utiliser les données du profil de l'école
+    const schoolInfo = schoolStore.schoolInfo
+    
+    // En-tête avec logo et infos école
+    if (schoolInfo.logo) {
+      doc.addImage(schoolInfo.logo, 'PNG', 14, 10, 25, 25)
+    }
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.text(schoolInfo.name || 'ÉTABLISSEMENT SCOLAIRE', 105, 20, { align: 'center' })
+    
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    if (schoolInfo.address) doc.text(schoolInfo.address, 105, 27, { align: 'center' })
+    if (schoolInfo.phone) doc.text('Tél: ' + schoolInfo.phone, 105, 32, { align: 'center' })
+    
+    const title = `HISTORIQUE PAIEMENTS - ${teacher.firstName} ${teacher.lastName}`
     doc.setFontSize(14)
-    doc.text(title, 14, 20)
+    doc.setFont('helvetica', 'bold')
+    doc.text(title, 105, 45, { align: 'center' })
 
     const headers = ['Date', 'Heures', 'Taux', 'Total', 'Période', 'Référence']
     const body = rows.map(r => [
@@ -641,7 +659,7 @@ async function exportTeacherHistoryPDF(teacherId) {
     autoTable(doc, {
       head: [headers],
       body,
-      startY: 30,
+      startY: 55,
       styles: { fontSize: 10 },
       headStyles: { fillColor: [41, 128, 185] },
       theme: 'grid',

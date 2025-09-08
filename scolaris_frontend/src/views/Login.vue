@@ -125,10 +125,12 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useSchoolStore } from '@/stores/school'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const schoolStore = useSchoolStore()
 
 const credentials = ref({
   username: '',
@@ -180,12 +182,20 @@ async function handleLogin() {
     
     if (success) {
       loading.value = false
-      loadingData.value = true // Démarrer le loading des données
+      loadingData.value = true
       
-      // Simuler le chargement des données (2-3 secondes)
+      // Vérifier si les données du profil existent
+      await schoolStore.fetchSchoolInfo()
+      
       setTimeout(() => {
         loadingData.value = false
-        router.push('/')
+        
+        // Si pas de nom d'école configuré, rediriger vers le profil
+        if (!schoolStore.schoolInfo.name) {
+          router.push('/profile')
+        } else {
+          router.push('/')
+        }
       }, 2500)
     } else {
       error.value = 'Nom d\'utilisateur ou mot de passe incorrect'

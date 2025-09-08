@@ -15,8 +15,10 @@
             @click="showUserMenu = !showUserMenu"
             class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <div class="bg-primary-600 text-white rounded-full p-2">
-              <i class="fas fa-user"></i>
+               <!-- Avatar utilisateur avec logo de l'école -->
+            <div class="bg-gray-200 rounded-full p-1 w-10 h-10 flex items-center justify-center overflow-hidden">
+              <img v-if="schoolStore.schoolInfo.logo" :src="schoolStore.schoolInfo.logo" alt="Logo" class="w-full h-full object-cover rounded-full">
+              <i v-else class="fas fa-user text-gray-600"></i>
             </div>
             <div class="text-left">
               <p class="text-sm font-medium text-gray-900">{{ authStore.user?.name }}</p>
@@ -53,11 +55,13 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useSchoolStore } from '@/stores/school' 
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const showUserMenu = ref(false)
+const schoolStore = useSchoolStore()
 
 const pageTitle = computed(() => {
   const titles = {
