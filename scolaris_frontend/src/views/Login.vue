@@ -30,7 +30,7 @@
         <!-- Contenu superposé -->
         <div class="relative z-10 h-full flex flex-col justify-center items-center text-center p-8">
           <div class="mb-6 animate-bounce-gentle">
-            <img src="@/assets/logo.png" alt="Scolaris" class="w-30 h-40 rounded-xl mx-auto">
+            <img src="@/assets/logo.ico" alt="Scolaris" class="w-30 h-40 rounded-xl mx-auto">
           </div>
           <h1 class="text-5xl font-bold text-white mb-4 drop-shadow-2xl">Scolaris</h1>
           <p class="text-xl text-white/90 drop-shadow-lg mb-8">Votre partenaire sûr de gestion scolaire</p>

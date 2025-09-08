@@ -21,7 +21,7 @@
       <div class="flex items-center">
         <!-- Logo de l'application -->
         <!-- <div class="rounded-lg p-1 border"> -->
-          <img src="@/assets/logo.png" alt="Scolaris" class="w-10 h-10 rounded">
+          <img src="@/assets/logo.ico" alt="Scolaris" class="w-10 h-10 rounded">
         <!-- </div> -->
         
         <!-- Titre avec animation de fondu -->
