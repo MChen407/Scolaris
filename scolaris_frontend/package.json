@@ -43,7 +43,7 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "src/assets/logo.png",
+      "icon": "src/assets/logo.ico",
       "signAndEditExecutable": false
     },
     "nsis": {

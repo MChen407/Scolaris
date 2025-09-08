@@ -26,7 +26,7 @@ export function usePDFExport() {
     }
   }
 
-  async function exportToPDF(data, title, columns, filename, customConfig = {}) {
+  async function exportToPDF(data, title, columns, filename, schoolInfo = null) {
     isExporting.value = true
     try {
       const { jsPDF } = await import('jspdf')
@@ -34,25 +34,32 @@ export function usePDFExport() {
       const autoTable = await import('jspdf-autotable')
       const doc = new jsPDF()
       
-      const schoolConfig = getSchoolConfig()
-      const finalConfig = { ...schoolConfig, ...customConfig }
+      // Utiliser les informations de l'école passées en paramètre ou la config par défaut
+      const finalConfig = schoolInfo || getSchoolConfig()
 
       // --- En-tête du document (inchangé) ---
       doc.setFillColor(41, 128, 185)
       doc.rect(0, 0, 210, 50, 'F')
       
-      if (finalConfig.logoUrl) {
-        doc.addImage(finalConfig.logoUrl, 'JPEG', 15, 10, 30, 30)
+      if (finalConfig.logo) {
+        doc.addImage(finalConfig.logo, 'JPEG', 15, 10, 30, 30)
       }
       
       doc.setTextColor(255, 255, 255)
       doc.setFontSize(18)
       doc.setFont('helvetica', 'bold')
-      doc.text(finalConfig.schoolName, 105, 20, { align: 'center' })
+      doc.text(finalConfig.name || finalConfig.schoolName || 'ÉTABLISSEMENT SCOLAIRE', 105, 20, { align: 'center' })
       
       doc.setFontSize(10)
-      doc.text(finalConfig.address, 105, 30, { align: 'center' })
-      doc.text('Tel: ' + finalConfig.phone, 105, 37, { align: 'center' })
+      if (finalConfig.address) {
+        doc.text(finalConfig.address, 105, 30, { align: 'center' })
+      }
+      if (finalConfig.phone) {
+        doc.text('Tél: ' + finalConfig.phone, 105, 37, { align: 'center' })
+      }
+      if (finalConfig.email) {
+        doc.text('Email: ' + finalConfig.email, 105, 44, { align: 'center' })
+      }
       
       // Titre du document
       doc.setTextColor(0, 0, 0)

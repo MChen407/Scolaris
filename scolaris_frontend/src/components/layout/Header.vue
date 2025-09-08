@@ -15,8 +15,10 @@
             @click="showUserMenu = !showUserMenu"
             class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <div class="bg-primary-600 text-white rounded-full p-2">
-              <i class="fas fa-user"></i>
+               <!-- Avatar utilisateur avec logo de l'école -->
+            <div class="bg-gray-200 rounded-full p-1 w-10 h-10 flex items-center justify-center overflow-hidden">
+              <img v-if="schoolStore.schoolInfo.logo" :src="schoolStore.schoolInfo.logo" alt="Logo" class="w-full h-full object-cover rounded-full">
+              <i v-else class="fas fa-user text-gray-600"></i>
             </div>
             <div class="text-left">
               <p class="text-sm font-medium text-gray-900">{{ authStore.user?.name }}</p>
@@ -31,9 +33,6 @@
               class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50"
               @click.away="showUserMenu = false"
             >
-              <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                <i class="fas fa-user mr-2"></i> Profil
-              </a>
               <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                 <i class="fas fa-cog mr-2"></i> Paramètres
               </a>
@@ -56,11 +55,13 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useSchoolStore } from '@/stores/school' 
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const showUserMenu = ref(false)
+const schoolStore = useSchoolStore()
 
 const pageTitle = computed(() => {
   const titles = {
@@ -72,7 +73,8 @@ const pageTitle = computed(() => {
     '/grades': 'Saisie des notes',
     '/reports': 'Bulletins scolaires',
     '/finance': 'Gestion financière',
-    '/statistics': 'Statistiques'
+    '/statistics': 'Statistiques',
+    '/profile': 'Profil de l\'établissement'
   }
   return titles[route.path] || 'Page'
 })
@@ -87,7 +89,8 @@ const pageDescription = computed(() => {
     '/grades': 'Enregistrer et modifier les notes',
     '/reports': 'Générer et consulter les bulletins',
     '/finance': 'Suivi des paiements et finances',
-    '/statistics': 'Analyses et rapports statistiques'
+    '/statistics': 'Analyses et rapports statistiques',
+    '/profile': 'Configurer les informations de l\'établissement'
   }
   return descriptions[route.path] || ''
 })

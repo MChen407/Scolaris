@@ -8,6 +8,7 @@ import FeeType from "./feeType.model.js";
 import StudentAverage from "./studentAverage.model.js";
 import TeacherPayment from "./teacherPayment.model.js";
 import ClassSubjectCoefficient from "./classSubjectCoefficient.model.js";
+import School from "./school.model.js";
 
 // Student - Classe
 Student.belongsTo(Classe, { foreignKey: "classId" });
@@ -76,5 +77,6 @@ export {
   FeeType,
   StudentAverage,
   TeacherPayment,
-  ClassSubjectCoefficient
+  ClassSubjectCoefficient,
+  School
 };

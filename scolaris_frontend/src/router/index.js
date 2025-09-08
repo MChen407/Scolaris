@@ -21,6 +21,7 @@ import Grades from '@/views/Grades.vue' // Gestion des notes
 import Reports from '@/views/Reports.vue' // Génération de bulletins
 import Finance from '@/views/Finance.vue' // Gestion financière
 import Statistics from '@/views/Statistics.vue' // Statistiques et analyses
+import Profile from '@/views/Profile.vue' // Profil de l'établissement
 
 
 /**
@@ -92,6 +93,12 @@ const routes = [
     name: 'Statistics',
     component: Statistics,
     meta: { requiresAuth: true, roles: ['admin'] }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: Profile,
+    meta: { requiresAuth: true, roles: ['admin', 'secretaire', 'comptable'] }
   }
 ]
 

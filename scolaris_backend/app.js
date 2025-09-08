@@ -5,6 +5,7 @@ import teacherRoutes from "./src/routes/teacher.route.js";
 import gradesRoutes from "./src/routes/grades.routes.js";
 import financeRoutes from "./src/routes/finance.routes.js";
 import statisticsRoutes from "./src/routes/statistics.routes.js";
+import schoolRoutes from "./src/routes/school.route.js";
 import coefficientRoutes from "./src/routes/classSubjectCoefficient.routes.js";
 
 import cors from "cors";
@@ -15,11 +16,6 @@ import sequelize from "./config/database.js";
 
 const app = express();
 
-// Middleware pour parser le JSON
-app.use(express.json());
-
-
-
 // Middleware CORS pour autoriser mon frontend
 app.use(cors({
   origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
@@ -27,6 +23,10 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Middleware pour parser le JSON avec limite augmentée
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
 app.use("/api/students", studentRoutes);
@@ -36,6 +36,7 @@ app.use("/api/teachers", teacherRoutes);
 app.use("/api/grades", gradesRoutes);
 app.use("/api/finance", financeRoutes);
 app.use("/api/statistics", statisticsRoutes);
+app.use("/api/school", schoolRoutes);
 app.use("/api/coefficients", coefficientRoutes);
 
 

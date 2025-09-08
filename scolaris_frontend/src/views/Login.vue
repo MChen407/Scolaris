@@ -1,4 +1,12 @@
 <template>
+
+ <!-- Loading overlay après connexion -->
+  <LoadingSpinner 
+    :show="loadingData" 
+    title="Connexion réussie !" 
+    message="Chargement de vos données en cours..." 
+  />
+
   <div class="h-screen grid grid-cols-1 lg:grid-cols-2 animate-fade-in">
     
     <!-- Carte Gauche - Carrousel avec Logo -->
@@ -22,7 +30,7 @@
         <!-- Contenu superposé -->
         <div class="relative z-10 h-full flex flex-col justify-center items-center text-center p-8">
           <div class="mb-6 animate-bounce-gentle">
-            <img src="@/assets/logo.png" alt="Scolaris" class="w-30 h-40 rounded-xl mx-auto">
+            <img src="@/assets/logo.ico" alt="Scolaris" class="w-30 h-40 rounded-xl mx-auto">
           </div>
           <h1 class="text-5xl font-bold text-white mb-4 drop-shadow-2xl">Scolaris</h1>
           <p class="text-xl text-white/90 drop-shadow-lg mb-8">Votre partenaire sûr de gestion scolaire</p>
@@ -90,7 +98,7 @@
             Se connecter
           </button>
         </form>
-
+        
         <!-- <div class="mt-8 pt-6 border-t border-gray-200">
           <h3 class="text-sm font-medium text-gray-700 mb-3">Comptes de démonstration :</h3>
           <div class="space-y-2 text-sm">
@@ -117,9 +125,12 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useSchoolStore } from '@/stores/school'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const schoolStore = useSchoolStore()
 
 const credentials = ref({
   username: '',
@@ -127,6 +138,7 @@ const credentials = ref({
 })
 
 const loading = ref(false)
+const loadingData = ref(false)
 const error = ref('')
 const currentImageIndex = ref(0)
 
@@ -147,10 +159,12 @@ onMounted(() => {
   if (authStore.isAuthenticated) {
     router.push('/')
   }
-  
+
   imageInterval = setInterval(() => {
     currentImageIndex.value = (currentImageIndex.value + 1) % backgroundImages.length
   }, 4000)
+  
+   
 })
 
 onUnmounted(() => {
@@ -163,18 +177,35 @@ async function handleLogin() {
   loading.value = true
   error.value = ''
 
-  try {
+ try {
     const success = authStore.login(credentials.value.username, credentials.value.password)
     
     if (success) {
-      router.push('/')
+      loading.value = false
+      loadingData.value = true
+      
+      // Vérifier si les données du profil existent
+      await schoolStore.fetchSchoolInfo()
+      
+      setTimeout(() => {
+        loadingData.value = false
+        
+        // Si pas de nom d'école configuré, rediriger vers le profil
+        if (!schoolStore.schoolInfo.name) {
+          router.push('/profile')
+        } else {
+          router.push('/')
+        }
+      }, 2500)
     } else {
       error.value = 'Nom d\'utilisateur ou mot de passe incorrect'
     }
   } catch (err) {
     error.value = 'Une erreur est survenue lors de la connexion'
   } finally {
-    loading.value = false
+    if (!loadingData.value) {
+      loading.value = false
+    }
   }
 }
 </script>

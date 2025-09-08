@@ -214,20 +214,21 @@
                   </option>
                 </select>
               </div>
-              <div>
+              <div v-if="teacherPayment.period !== 'monthly'">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Heures</label>
-                <input v-model.number="teacherPayment.hours" type="number" placeholder="Nb d'heures" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                <input v-model.number="teacherPayment.hours" type="number" placeholder="Nb d'heures" :required="teacherPayment.period !== 'monthly'" class="w-full border border-gray-300 rounded-lg px-3 py-2">
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Période</label>
-                <select v-model="teacherPayment.period" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                <select v-model="teacherPayment.period" @change="onPeriodChange" class="w-full border border-gray-300 rounded-lg px-3 py-2">
                   <option value="day">Jour</option>
                   <option value="week">Semaine</option>
                   <option value="month">Mois</option>
+                  <option value="monthly">Mensuel (fixe)</option>
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Montant/heure (CFA)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ teacherPayment.period === 'monthly' ? 'Salaire mensuel (CFA)' : 'Montant/heure (CFA)' }}</label>
                 <input v-model.number="teacherPayment.rate" type="number" placeholder="Montant" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
               </div>
             </div>
@@ -487,32 +488,7 @@
           </div>
         </BaseModal>
 
-        <!-- Receipt Configuration Modal -->
-        <BaseModal
-          :show="showReceiptModal"
-          title="Configuration du Reçu"
-          @close="showReceiptModal = false"
-          @confirm="generatePDFReceipt"
-        >
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Nom de l'établissement</label>
-              <input v-model="receiptConfig.schoolName" type="text" class="input-field">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
-              <input v-model="receiptConfig.address" type="text" class="input-field">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-              <input v-model="receiptConfig.phone" type="text" class="input-field">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Logo</label>
-              <input @change="handleReceiptLogoUpload" type="file" accept="image/*" class="input-field">
-            </div>
-          </div>
-        </BaseModal>
+
 
         <!-- Student Selection Modal -->
         <BaseModal
@@ -574,6 +550,7 @@ import { useFinanceStore } from '@/stores/finance'
 import { useStudentsStore } from '@/stores/students'
 import { useAuthStore } from '@/stores/auth'
 import { useTeachersStore } from '@/stores/teachers'
+import { useSchoolStore } from '@/stores/school'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { useStatisticsStore } from '@/stores/statistics'
@@ -647,9 +624,27 @@ async function exportTeacherHistoryPDF(teacherId) {
 
     const teacher = teachersStore.getTeacherById(teacherId) || { firstName: '', lastName: '' }
     const doc = new jsPDF('p', 'mm', 'a4')
-    const title = `Historique paiements - ${teacher.firstName} ${teacher.lastName}`
+    
+    // Utiliser les données du profil de l'école
+    const schoolInfo = schoolStore.schoolInfo
+    
+    // En-tête avec logo et infos école
+    if (schoolInfo.logo) {
+      doc.addImage(schoolInfo.logo, 'PNG', 14, 10, 25, 25)
+    }
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.text(schoolInfo.name || 'ÉTABLISSEMENT SCOLAIRE', 105, 20, { align: 'center' })
+    
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    if (schoolInfo.address) doc.text(schoolInfo.address, 105, 27, { align: 'center' })
+    if (schoolInfo.phone) doc.text('Tél: ' + schoolInfo.phone, 105, 32, { align: 'center' })
+    
+    const title = `HISTORIQUE PAIEMENTS - ${teacher.firstName} ${teacher.lastName}`
     doc.setFontSize(14)
-    doc.text(title, 14, 20)
+    doc.setFont('helvetica', 'bold')
+    doc.text(title, 105, 45, { align: 'center' })
 
     const headers = ['Date', 'Heures', 'Taux', 'Total', 'Période', 'Référence']
     const body = rows.map(r => [
@@ -664,7 +659,7 @@ async function exportTeacherHistoryPDF(teacherId) {
     autoTable(doc, {
       head: [headers],
       body,
-      startY: 30,
+      startY: 55,
       styles: { fontSize: 10 },
       headStyles: { fillColor: [41, 128, 185] },
       theme: 'grid',
@@ -685,6 +680,7 @@ const financeStore = useFinanceStore()
 const studentsStore = useStudentsStore()
 const authStore = useAuthStore()
 const teachersStore = useTeachersStore()
+const schoolStore = useSchoolStore()
 
 const showAddPaymentModal = ref(false)
 const savingPayment = ref(false)
@@ -820,12 +816,18 @@ const availableTeachers = computed(() => {
 })
 
 const canProcessTeacherPayment = computed(() => {
+  if (teacherPayment.value.period === 'monthly') {
+    return teacherPayment.value.teacherId && teacherPayment.value.rate > 0
+  }
   return teacherPayment.value.teacherId && 
          teacherPayment.value.hours > 0 && 
          teacherPayment.value.rate > 0
 })
 
 const calculateTeacherTotal = computed(() => {
+  if (teacherPayment.value.period === 'monthly') {
+    return formatCurrency(teacherPayment.value.rate)
+  }
   const total = teacherPayment.value.hours * teacherPayment.value.rate
   return formatCurrency(total)
 })
@@ -841,7 +843,7 @@ onMounted(async () => {
     await studentsStore.fetchStudents()
     teacherPayments.value = await financeStore.fetchTeacherPayments()
     await loadTeacherStats()
-    loadSchoolConfig()
+    await schoolStore.fetchSchoolInfo()
   } finally {
     setTimeout(() => {
       pageLoading.value = false
@@ -971,6 +973,14 @@ async function loadStudentHistory() {
   }
 }
 
+function onPeriodChange() {
+  if (teacherPayment.value.period === 'monthly') {
+    teacherPayment.value.hours = 1 // Valeur par défaut pour les calculs
+  } else {
+    teacherPayment.value.hours = 0
+  }
+}
+
 async function processTeacherPayment() {
   if (!canProcessTeacherPayment.value) {
     showError('Erreur', 'Veuillez remplir tous les champs')
@@ -979,7 +989,9 @@ async function processTeacherPayment() {
   
   processingTeacherPayment.value = true
   try {
-    const totalAmount = teacherPayment.value.hours * teacherPayment.value.rate
+    const totalAmount = teacherPayment.value.period === 'monthly' ? 
+      teacherPayment.value.rate : 
+      teacherPayment.value.hours * teacherPayment.value.rate
     const teacher = teachersStore.getTeacherById(parseInt(teacherPayment.value.teacherId))
     
     if (!teacher) {
@@ -1059,48 +1071,14 @@ async function savePayment() {
   }
 }
 
-const showReceiptModal = ref(false)
 const receiptPayment = ref(null)
-const receiptConfig = ref({
-  schoolName: '',
-  address: '',
-  phone: '',
-  logoUrl: ''
-})
-
-// Charger la configuration de l'établissement connecté
-function loadSchoolConfig() {
-  const schoolId = localStorage.getItem('current_school_id')
-  if (schoolId) {
-    const saved = localStorage.getItem(`schoolConfig_${schoolId}`)
-    if (saved) {
-      const config = JSON.parse(saved)
-      receiptConfig.value = {
-        schoolName: config.name || '',
-        address: config.address || '',
-        phone: config.phone || '',
-        logoUrl: config.logo || ''
-      }
-    }
-  }
-}
 
 function openReceiptConfig(payment) {
   receiptPayment.value = payment
-  loadSchoolConfig() // Charger automatiquement la config
-  showReceiptModal.value = true
+  generatePDFReceipt() // Générer directement le reçu
 }
 
-function handleReceiptLogoUpload(event) {
-  const file = event.target.files[0]
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      receiptConfig.value.logoUrl = e.target.result
-    }
-    reader.readAsDataURL(file)
-  }
-}
+
 
 
 async function generatePDFReceipt() {
@@ -1110,10 +1088,6 @@ async function generatePDFReceipt() {
       return
     }
 
-    console.log("Données du paiement:", receiptPayment.value)
-    console.log("Type de frais ID:", receiptPayment.value.feeTypeId)
-    console.log("Types de frais disponibles:", financeStore.feeTypes)
-
     const doc = new jsPDF()
     const PRIMARY_COLOR = '#2c3e50'
     const TEXT_COLOR = '#34495e'
@@ -1121,15 +1095,21 @@ async function generatePDFReceipt() {
     const LOGO_HEIGHT = 25
     const LIGHT_GRAY = '#ecf0f1'
 
+    // Utiliser les données du profil de l'école
+    const schoolInfo = schoolStore.schoolInfo
+
     // En-tête
-    if (receiptConfig.value.logoUrl) {
-      doc.addImage(receiptConfig.value.logoUrl, 'PNG', PAGE_MARGIN, PAGE_MARGIN, 0, LOGO_HEIGHT)
+    if (schoolInfo.logo) {
+      doc.addImage(schoolInfo.logo, 'PNG', PAGE_MARGIN, PAGE_MARGIN, 0, LOGO_HEIGHT)
     }
     doc.setTextColor(TEXT_COLOR)
     doc.setFontSize(9)
-    doc.text((receiptConfig.value.schoolName || 'Nom Établissement').toUpperCase(), PAGE_MARGIN, PAGE_MARGIN + LOGO_HEIGHT + 8)
-    doc.text(receiptConfig.value.address || 'Adresse', PAGE_MARGIN, PAGE_MARGIN + LOGO_HEIGHT + 13)
-    doc.text('Tél: ' + (receiptConfig.value.phone || 'N/A'), PAGE_MARGIN, PAGE_MARGIN + LOGO_HEIGHT + 18)
+    doc.text((schoolInfo.name || 'Nom Établissement').toUpperCase(), PAGE_MARGIN, PAGE_MARGIN + LOGO_HEIGHT + 8)
+    doc.text(schoolInfo.address || 'Adresse', PAGE_MARGIN, PAGE_MARGIN + LOGO_HEIGHT + 13)
+    doc.text('Tél: ' + (schoolInfo.phone || 'N/A'), PAGE_MARGIN, PAGE_MARGIN + LOGO_HEIGHT + 18)
+    if (schoolInfo.email) {
+      doc.text('Email: ' + schoolInfo.email, PAGE_MARGIN, PAGE_MARGIN + LOGO_HEIGHT + 23)
+    }
     
     doc.setTextColor(PRIMARY_COLOR)
     doc.setFont('helvetica', 'bold')
@@ -1212,7 +1192,6 @@ async function generatePDFReceipt() {
     doc.text(footerText, 105, pageHeight - 15, { align: 'center' })
     
     doc.save('recu_' + (receiptPayment.value.reference || 'test') + '.pdf')
-    showReceiptModal.value = false
     showSuccess('Succès', 'Reçu PDF généré avec succès')
 
   } catch (error) {

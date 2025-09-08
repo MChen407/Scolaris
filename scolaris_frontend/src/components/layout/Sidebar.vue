@@ -21,7 +21,7 @@
       <div class="flex items-center">
         <!-- Logo de l'application -->
         <!-- <div class="rounded-lg p-1 border"> -->
-          <img src="@/assets/logo.png" alt="Scolaris" class="w-10 h-10 rounded">
+          <img src="@/assets/logo.ico" alt="Scolaris" class="w-10 h-10 rounded">
         <!-- </div> -->
         
         <!-- Titre avec animation de fondu -->
@@ -64,9 +64,10 @@
     <!-- SECTION INFORMATIONS UTILISATEUR -->
     <div class="p-4 border-t border-gray-200">
       <div class="flex items-center">
-        <!-- Avatar utilisateur -->
-        <div class="bg-gray-200 rounded-full p-2">
-          <i class="fas fa-user text-gray-600"></i>
+        <!-- Avatar utilisateur avec logo de l'école -->
+        <div class="bg-gray-200 rounded-full p-1 w-10 h-10 flex items-center justify-center overflow-hidden">
+          <img v-if="schoolStore.schoolInfo.logo" :src="schoolStore.schoolInfo.logo" alt="Logo" class="w-full h-full object-cover rounded-full">
+          <i v-else class="fas fa-user text-gray-600"></i>
         </div>
         
         <!-- Informations utilisateur avec animation -->
@@ -100,6 +101,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router' // Pour détecter la route active
 import { useAuthStore } from '@/stores/auth' // Pour les informations utilisateur
+import { useSchoolStore } from '@/stores/school' // Pour le logo de l'école
 
 // PROPRIÉTÉS REÇUES DU COMPOSANT PARENT
 defineProps({
@@ -112,6 +114,7 @@ defineEmits(['toggle-sidebar']) // Événement de basculement d'état
 // HOOKS ET STORES
 const route = useRoute() // Route actuelle
 const authStore = useAuthStore() // Store d'authentification
+const schoolStore = useSchoolStore() // Store de l'école
 
 /**
  * CONFIGURATION DU MENU DE NAVIGATION
@@ -131,7 +134,8 @@ const menuItems = [
   { name: 'Notes', path: '/grades', icon: 'fas fa-clipboard-list', roles: ['admin', 'secretaire'] },
   { name: 'Bulletins', path: '/reports', icon: 'fas fa-file-alt', roles: ['admin', 'secretaire'] },
   { name: 'Finances', path: '/finance', icon: 'fas fa-money-bill-wave', roles: ['admin', 'comptable'] },
-  { name: 'Statistiques', path: '/statistics', icon: 'fas fa-chart-bar', roles: ['admin'] }
+  { name: 'Statistiques', path: '/statistics', icon: 'fas fa-chart-bar', roles: ['admin'] },
+  { name: 'Profil École', path: '/profile', icon: 'fas fa-building', roles: ['admin'] }
 ]
 
 /**
