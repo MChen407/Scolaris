@@ -130,10 +130,14 @@ const loading = ref(false)
 const error = ref('')
 const currentImageIndex = ref(0)
 
+import imgScolaris from '@/assets/imgScolaris.jpg'
+import imgScolaris1 from '@/assets/imgScolaris1.jpg'
+import imgScolaris2 from '@/assets/imgScolaris2.jpg'
+
 const backgroundImages = [
-  '/src/assets/imgScolaris.jpg',
-  '/src/assets/imgScolaris1.jpg', 
-  '/src/assets/imgScolaris2.jpg'
+  imgScolaris,
+  imgScolaris1,
+  imgScolaris2
 ]
 
 let imageInterval = null

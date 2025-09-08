@@ -7,9 +7,10 @@
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev -w scolaris_frontend\" \"npm run dev -w scolaris_backend\"",
-    "build": "npm run build -w scolaris_frontend",
-    "electron": "npm run electron -w scolaris_frontend",
-    "dist": "npm run dist -w scolaris_frontend"
+    "build:backend": "cd scolaris_backend && npm install",
+    "build:frontend": "cd scolaris_frontend && npm run build",
+    "build:all": "npm run build:backend && npm run build:frontend",
+    "dist": "npm run build:all && cd scolaris_frontend && npm run dist"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
