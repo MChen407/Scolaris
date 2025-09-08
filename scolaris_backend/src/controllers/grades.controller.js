@@ -1,4 +1,4 @@
-import { Grade, Student, Subject, Classe, StudentAverage } from "../models/index.model.js";
+import { Grade, Student, Subject, Classe, StudentAverage, ClassSubjectCoefficient } from "../models/index.model.js";
 
 export const getAllGrades = async (req, res) => {
     try {
@@ -129,12 +129,41 @@ export const getBulletinData = async (req, res) => {
     try {
         const { studentId, period } = req.params;
         
+        // Récupérer l'étudiant et sa classe
+        const student = await Student.findByPk(studentId, {
+            include: [{ model: Classe }]
+        });
+        
+        if (!student) {
+            return res.status(404).json({ error: "Étudiant non trouvé" });
+        }
+        
         const grades = await Grade.findAll({
             where: { studentId, period },
             include: [
-                { model: Subject, attributes: ['name', 'coefficient', 'category'] }
+                { model: Subject, attributes: ['name', 'category'] },
+                { model: Classe }
             ]
         });
+        
+        if (grades.length === 0) {
+            return res.json([]);
+        }
+        
+        // Récupérer les coefficients pour cette classe
+        let coefficientsMap = {};
+        try {
+            const classSubjectCoeffs = await ClassSubjectCoefficient.findAll({
+                where: { classId: student.classId },
+                include: [{ model: Subject }]
+            });
+            
+            classSubjectCoeffs.forEach(csc => {
+                coefficientsMap[csc.subjectId] = csc.coefficient;
+            });
+        } catch (error) {
+            console.log('Coefficients non configurés, utilisation de coefficient 1 par défaut');
+        }
         
         // Grouper par matière et calculer les moyennes
         const subjectGrades = {};
@@ -143,15 +172,16 @@ export const getBulletinData = async (req, res) => {
             if (!subjectGrades[subjectId]) {
                 subjectGrades[subjectId] = {
                     subject: grade.Subject,
+                    coefficient: coefficientsMap[subjectId] || 1,
                     interros: [],
                     devoirs: []
                 };
             }
             
             if (grade.type === 'Interro') {
-                subjectGrades[subjectId].interros.push(grade.grade);
+                subjectGrades[subjectId].interros.push(parseFloat(grade.grade));
             } else if (grade.type === 'Devoir') {
-                subjectGrades[subjectId].devoirs.push(grade.grade);
+                subjectGrades[subjectId].devoirs.push(parseFloat(grade.grade));
             }
         });
         
@@ -162,26 +192,29 @@ export const getBulletinData = async (req, res) => {
                 : null;
             
             let subjectAvg = null;
-            if (interroAvg !== null && subject.devoirs.length === 2) {
-                subjectAvg = (interroAvg + subject.devoirs[0] + subject.devoirs[1]) / 3;
+            if (interroAvg !== null && subject.devoirs.length >= 2) {
+                const devoirAvg = subject.devoirs.reduce((a, b) => a + b, 0) / subject.devoirs.length;
+                subjectAvg = (interroAvg + devoirAvg) / 2;
             } else if (interroAvg !== null && subject.devoirs.length === 1) {
                 subjectAvg = (interroAvg + subject.devoirs[0]) / 2;
             } else if (interroAvg !== null) {
                 subjectAvg = interroAvg;
+            } else if (subject.devoirs.length > 0) {
+                subjectAvg = subject.devoirs.reduce((a, b) => a + b, 0) / subject.devoirs.length;
             }
             
             return {
                 subjectName: subject.subject.name,
-                coefficient: subject.subject.coefficient,
-                category: subject.subject.category,
+                coefficient: subject.coefficient,
+                category: subject.subject.category || 'Général',
                 interros: subject.interros,
                 devoirs: subject.devoirs,
-                interroAvg,
-                subjectAvg
+                interroAvg: interroAvg ? parseFloat(interroAvg.toFixed(2)) : null,
+                subjectAvg: subjectAvg ? parseFloat(subjectAvg.toFixed(2)) : null
             };
         });
         
-        // Calculer et sauvegarder la moyenne générale
+        // Calculer la moyenne générale
         let totalPoints = 0;
         let totalCoefficients = 0;
         
@@ -192,19 +225,24 @@ export const getBulletinData = async (req, res) => {
             }
         });
         
-        const generalAverage = totalCoefficients > 0 ? totalPoints / totalCoefficients : 0;
+        const generalAverage = totalCoefficients > 0 ? parseFloat((totalPoints / totalCoefficients).toFixed(2)) : 0;
         
         // Sauvegarder la moyenne dans StudentAverages
-        await StudentAverage.upsert({
-            studentId: parseInt(studentId),
-            period,
-            generalAverage,
-            totalPoints,
-            totalCoefficients
-        });
+        try {
+            await StudentAverage.upsert({
+                studentId: parseInt(studentId),
+                period,
+                generalAverage,
+                totalPoints,
+                totalCoefficients
+            });
+        } catch (error) {
+            console.log('Erreur sauvegarde moyenne:', error.message);
+        }
         
         res.json(bulletinData);
     } catch (error) {
+        console.error('Erreur getBulletinData:', error);
         res.status(500).json({ error: error.message });
     }
 };

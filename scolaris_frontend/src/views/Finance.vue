@@ -7,7 +7,7 @@
       
       <main class="p-6 space-y-6 overflow-y-auto max-h-screen">
         <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
           <div class="bg-gradient-to-br from-green-400 to-green-600 text-white rounded-lg shadow-lg p-6">
             <div class="flex items-center justify-between">
               <div>
@@ -52,6 +52,18 @@
                 </div>
                 <p class="text-2xl font-bold text-white">{{ studentsWithPayments }}</p>
                 <p class="text-sm text-blue-100">Élèves concernés</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-gradient-to-br from-purple-400 to-purple-600 text-white rounded-lg shadow-lg p-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mb-3">
+                  <i class="fas fa-chalkboard-teacher text-white text-xl"></i>
+                </div>
+                <p class="text-2xl font-bold text-white">{{ teacherStats?.paidTeachersCount || 0 }}/{{ teacherStats?.totalTeachers || 0 }}</p>
+                <p class="text-sm text-purple-100">Enseignants Payés</p>
               </div>
             </div>
           </div>
@@ -209,9 +221,9 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Période</label>
                 <select v-model="teacherPayment.period" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                  <option value="Jour">Jour</option>
-                  <option value="Semaine">Semaine</option>
-                  <option value="Mois">Mois</option>
+                  <option value="day">Jour</option>
+                  <option value="week">Semaine</option>
+                  <option value="month">Mois</option>
                 </select>
               </div>
               <div>
@@ -243,6 +255,7 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TOTAL</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PÉRIODE</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DATE</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACTIONS</th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
@@ -253,6 +266,16 @@
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{{ formatCurrency(payment.total) }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payment.period }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(payment.date) }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <div class="flex items-center gap-3">
+                      <button @click="openTeacherHistory(payment.teacherId)" title="Historique" class="text-blue-600 hover:text-blue-900">
+                        <i class="fas fa-history"></i>
+                      </button>
+                     <button @click="(async ()=>{ await exportTeacherHistoryPDF(payment.teacherId) })()" title="Exporter" class="text-green-600 hover:text-green-900">
+                      <i class="fas fa-file-pdf"></i>
+                    </button>
+                    </div>
+                  </td>
                 </tr>
                 <tr v-if="teacherPayments.length === 0">
                   <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
@@ -262,7 +285,31 @@
               </tbody>
             </table>
           </div>
-        </div>
+  </div>
+       <!-- Modal Historique enseignant -->
+  <BaseModal :show="showTeacherHistoryModal" title="Historique Paiements" @close="showTeacherHistoryModal = false" :show-footer="false">
+    <div>
+      <h4 class="font-semibold mb-3">{{ teacherHistoryTeacher.firstName }} {{ teacherHistoryTeacher.lastName }}</h4>
+      <div v-if="teacherHistory.length === 0" class="text-gray-500">Aucun paiement trouvé</div>
+      <table v-else class="min-w-full">
+        <thead><tr><th>Date</th><th>Heures</th><th>Taux</th><th>Total</th><th>Période</th><th>Référence</th></tr></thead>
+        <tbody>
+          <tr v-for="p in teacherHistory" :key="p.id">
+            <td>{{ p.date }}</td>
+            <td>{{ p.hours }}</td>
+            <td>{{ p.rate }}</td>
+            <td>{{ p.total }}</td>
+            <td>{{ p.period }}</td>
+            <td>{{ p.reference }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="mt-4 flex justify-end gap-2">
+        <button @click="() => exportTeacherHistoryPDF(teacherHistoryTeacher.id)" class="btn-primary">Exporter PDF</button>
+        <button @click="showTeacherHistoryModal = false" class="btn-secondary">Fermer</button>
+      </div>
+    </div>
+  </BaseModal>
 
         <!-- Payment Modal -->
         <BaseModal
@@ -297,7 +344,7 @@
               </select>
               <div v-if="financeStore.feeTypes.length === 0" class="text-red-500 text-sm mt-1">
                 Aucun type de frais disponible
-                <button @click="financeStore.fetchFeeTypes()" class="ml-2 text-blue-600 underline">
+                <button @click="reloadFeeTypes" class="ml-2 text-blue-600 underline">
                   Recharger
                 </button>
               </div>
@@ -578,6 +625,61 @@ function createRevenueExpenseChart() {
   })
 }
 
+async function reloadFeeTypes() {
+  try {
+    await financeStore.fetchFeeTypes()
+    showSuccess('Succès', 'Types de frais rechargés')
+  } catch (e) {
+    console.error('Erreur reload fee types:', e)
+    showError('Erreur', 'Impossible de recharger les types de frais')
+  }
+}
+
+// Génération PDF pour l'historique d'un enseignant
+async function exportTeacherHistoryPDF(teacherId) {
+  try {
+    // Récupérer l'historique depuis le store / backend
+    const rows = await financeStore.getTeacherPaymentHistory(teacherId)
+    if (!rows || rows.length === 0) {
+      showError('Aucun paiement', 'Aucun paiement trouvé pour cet enseignant')
+      return
+    }
+
+    const teacher = teachersStore.getTeacherById(teacherId) || { firstName: '', lastName: '' }
+    const doc = new jsPDF('p', 'mm', 'a4')
+    const title = `Historique paiements - ${teacher.firstName} ${teacher.lastName}`
+    doc.setFontSize(14)
+    doc.text(title, 14, 20)
+
+    const headers = ['Date', 'Heures', 'Taux', 'Total', 'Période', 'Référence']
+    const body = rows.map(r => [
+      r.date || '',
+      r.hours ?? '',
+      r.rate ?? '',
+      r.total ?? '',
+      r.period || '',
+      r.reference || ''
+    ])
+
+    autoTable(doc, {
+      head: [headers],
+      body,
+      startY: 30,
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [41, 128, 185] },
+      theme: 'grid',
+      margin: { left: 14, right: 14 }
+    })
+
+    const filename = `historique_paiements_${(teacher.firstName || 'teacher')}_${(teacher.lastName || '')}.pdf`.replace(/\s+/g, '_')
+    doc.save(filename)
+    showSuccess('Exporté', 'Historique téléchargé en PDF')
+  } catch (error) {
+    console.error('Erreur export PDF:', error)
+    showError('Erreur', 'Impossible de générer le PDF')
+  }
+}
+
 const sidebarCollapsed = ref(false)
 const financeStore = useFinanceStore()
 const studentsStore = useStudentsStore()
@@ -599,6 +701,12 @@ const paymentForm = ref({
 const studentSearch = ref('')
 const processingTeacherPayment = ref(false)
 const teacherPayments = ref([])
+const teacherStats = ref({
+  totalTeachers: 0,
+  paidTeachersCount: 0,
+  unpaidTeachersCount: 0,
+  monthlyAmount: 0
+})
 
 const filters = ref({
   studentId: '',
@@ -609,7 +717,7 @@ const filters = ref({
 const teacherPayment = ref({
   teacherId: '',
   hours: 0,
-  period: 'jour',
+  period: 'day',
   rate: 0
 })
 
@@ -631,13 +739,60 @@ const studentsWithPayments = computed(() => {
 })
 
 const paymentColumns = [
-  { key: 'reference', label: 'Référence' },
-  { key: 'studentName', label: 'Élève' },
-  { key: 'feeTypeName', label: 'Type' },
-  { key: 'amount', label: 'Montant' },
-  { key: 'date', label: 'Date' },
-  { key: 'status', label: 'Statut' }
+  { key: 'reference', label: 'Référence', type: 'text' },
+  { key: 'studentName', label: 'Élève', type: 'text' },
+  { key: 'feeTypeName', label: 'Type', type: 'text' },
+  { key: 'amount', label: 'Montant', type: 'number' },
+  { key: 'date', label: 'Date', type: 'date' },
+  { key: 'status', label: 'Statut', type: 'text' }
 ]
+
+// Teacher payments UI state
+const showTeacherHistoryModal = ref(false)
+const teacherHistory = ref([])
+const teacherHistoryTeacher = ref(null)
+
+// Ouvrir historique d'un enseignant
+async function openTeacherHistory(teacherId) {
+  try {
+    teacherHistory.value = await financeStore.getTeacherPaymentHistory(teacherId)
+    teacherHistoryTeacher.value = teachersStore.getTeacherById(teacherId) || { firstName: '', lastName: '' }
+    showTeacherHistoryModal.value = true
+  } catch (e) {
+    console.error('Erreur chargement historique enseignant:', e)
+    alert('Erreur chargement historique enseignant')
+  }
+}
+
+// Export CSV simple
+function exportTeacherHistoryCSV(teacherId) {
+  const rows = teacherHistory.value.length ? teacherHistory.value : []
+  if (rows.length === 0) {
+    alert('Aucun paiement à exporter')
+    return
+  }
+  const headers = ['Date','Heures','Taux','Total','Période','Référence']
+  const csv = [
+    headers.join(';'),
+    ...rows.map(r => [
+      r.date || '',
+      r.hours ?? '',
+      r.rate ?? '',
+      r.total ?? '',
+      r.period || '',
+      r.reference || ''
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(';'))
+  ].join('\r\n')
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${teacherHistoryTeacher.value.firstName || 'teacher'}_payments.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 
 const paymentsWithNames = computed(() => {
   return financeStore.payments
@@ -685,6 +840,7 @@ onMounted(async () => {
     await teachersStore.fetchTeachers()
     await studentsStore.fetchStudents()
     teacherPayments.value = await financeStore.fetchTeacherPayments()
+    await loadTeacherStats()
     loadSchoolConfig()
   } finally {
     setTimeout(() => {
@@ -853,7 +1009,7 @@ async function processTeacherPayment() {
     teacherPayment.value = {
       teacherId: '',
       hours: 0,
-      period: 'jour',
+      period: 'day',
       rate: 0
     }
   } catch (error) {
@@ -1062,6 +1218,17 @@ async function generatePDFReceipt() {
   } catch (error) {
     console.error("Erreur lors de la génération du PDF:", error)
     showError('Erreur', 'Erreur lors de la génération du PDF')
+  }
+}
+
+async function loadTeacherStats() {
+  try {
+    const response = await fetch('http://localhost:3000/api/finance/teacher-stats')
+    if (response.ok) {
+      teacherStats.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Erreur chargement stats enseignants:', error)
   }
 }
 

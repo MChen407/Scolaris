@@ -97,7 +97,7 @@
               </div>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
@@ -113,23 +113,31 @@
                 <input
                   v-model="teacherForm.phone"
                   type="tel"
-                  required
                   class="input-field"
                   placeholder="Numéro de téléphone"
                 >
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Charge horaire (heures/semaine)</label>
-                <input
-                  v-model.number="teacherForm.weeklyHours"
-                  type="number"
-                  required
-                  min="0"
-                  max="40"
-                  class="input-field"
-                  placeholder="Nombre d'heures par semaine"
-                >
+                <label class="block text-sm font-medium text-gray-700 mb-1">Niveau</label>
+                <select v-model="teacherForm.niveau" required class="input-field">
+                  <option value="">Sélectionner niveau</option>
+                  <option value="Primaire">Primaire</option>
+                  <option value="Secondaire">Secondaire</option>
+                </select>
               </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Charge horaire (heures/semaine)</label>
+              <input
+                v-model.number="teacherForm.weeklyHours"
+                type="number"
+                required
+                min="0"
+                max="40"
+                class="input-field"
+                placeholder="Nombre d'heures par semaine"
+              >
             </div>
             
             <div>
@@ -227,6 +235,7 @@ const teacherForm = ref({
   lastName: '',
   email: '',
   phone: '',
+  niveau: '',
   subjects: [],
   classes: [],
   weeklyHours: 0
@@ -248,6 +257,7 @@ const columns = [
   { key: 'lastName', label: 'Nom' },
   { key: 'email', label: 'Email' },
   { key: 'phone', label: 'Téléphone' },
+  { key: 'niveau', label: 'Niveau' },
   { key: 'weeklyHours', label: 'Heures/semaine' },
   { key: 'subjectNames', label: 'Matières' },
   { key: 'classNames', label: 'Classes' }
@@ -272,6 +282,7 @@ function editTeacher(teacher) {
     lastName: teacher.lastName,
     email: teacher.email,
     phone: teacher.phone,
+    niveau: teacher.niveau,
     weeklyHours: teacher.weeklyHours,
     subjects: teacher.Subjects ? teacher.Subjects.map(s => s.id) : [],
     classes: teacher.Classes ? teacher.Classes.map(c => c.id) : []
@@ -309,6 +320,7 @@ function resetForm() {
     lastName: '',
     email: '',
     phone: '',
+    niveau: '',
     subjects: [],
     classes: [],
     weeklyHours: 0
@@ -324,6 +336,7 @@ async function saveTeacher() {
       lastName: teacherForm.value.lastName,
       email: teacherForm.value.email,
       phone: teacherForm.value.phone,
+      niveau: teacherForm.value.niveau,
       subjectIds: teacherForm.value.subjects,
       classIds: teacherForm.value.classes,
       weeklyHours: teacherForm.value.weeklyHours

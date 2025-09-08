@@ -10,11 +10,19 @@
         <div class="bg-white rounded-lg shadow-sm border mb-6 p-4">
           <div class="flex gap-4 items-end">
             <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Filtrer par niveau</label>
+              <select v-model="selectedNiveauFilter" class="input-field">
+                <option value="">Tous les niveaux</option>
+                <option value="Primaire">Primaire</option>
+                <option value="Secondaire">Secondaire</option>
+              </select>
+            </div>
+            <div class="flex-1">
               <label class="block text-sm font-medium text-gray-700 mb-1">Filtrer par classe</label>
               <select v-model="selectedClassFilter" class="input-field">
                 <option value="">Toutes les classes</option>
-                <option v-for="classe in classesStore.classes" :key="classe.id" :value="classe.id">
-                  {{ classe.name }}
+                <option v-for="classe in filteredClasses" :key="classe.id" :value="classe.id">
+                  {{ classe.name }} ({{ classe.niveau }})
                 </option>
               </select>
             </div>
@@ -159,18 +167,28 @@
               </div>
             </div>
             
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Classe</label>
-              <select v-model="studentForm.classId" required class="input-field">
-                <option value="">Sélectionner une classe</option>
-                <option
-                  v-for="classe in classesStore.classes"
-                  :key="classe.id"
-                  :value="classe.id"
-                >
-                  {{ classe.name }}
-                </option>
-              </select>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Niveau</label>
+                <select v-model="selectedNiveauForm" @change="onNiveauChange" required class="input-field">
+                  <option value="">Sélectionner niveau</option>
+                  <option value="Primaire">Primaire</option>
+                  <option value="Secondaire">Secondaire</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Classe</label>
+                <select v-model="studentForm.classId" required class="input-field" :disabled="!selectedNiveauForm">
+                  <option value="">Sélectionner une classe</option>
+                  <option
+                    v-for="classe in classesByNiveau"
+                    :key="classe.id"
+                    :value="classe.id"
+                  >
+                    {{ classe.name }}
+                  </option>
+                </select>
+              </div>
             </div>
 
             <div>
@@ -327,8 +345,11 @@ const studentForm = ref({
   birthDate: '',
   guardian: '',
   phone: '',
+  address: '',
+  parentName: '',
+  parentPhone: '',
   classId: '',
-  enrollmentStatus: 'pending',
+  enrollmentStatus: 'active',
   documents: {
     birthCertificate: false,
     medicalCertificate: false,
@@ -339,11 +360,14 @@ const studentForm = ref({
 
 const searchTerm = ref('')
 const selectedClassFilter = ref('')
+const selectedNiveauFilter = ref('')
+const selectedNiveauForm = ref('')
 
 onMounted(async () => {
   try {
     await authStore.initAuth()
     await studentsStore.fetchStudents()
+    await classesStore.fetchClasses()
   } finally {
     // Simuler un délai pour montrer l'animation
     setTimeout(() => {
@@ -359,6 +383,7 @@ const columns = [
   { key: 'gender', label: 'Sexe' },
   { key: 'birthDate', label: 'Date de naissance' },
   { key: 'className', label: 'Classe' },
+  { key: 'niveau', label: 'Niveau' },
   { key: 'enrollmentStatus', label: 'Statut' },
   { key: 'guardian', label: 'Tuteur' },
   { key: 'phone', label: 'Téléphone' }
@@ -366,15 +391,36 @@ const columns = [
 
 // Ajout du nom de classe pour chaque élève
 const studentsWithClassNames = computed(() => {
-  return studentsStore.students.map(student => ({
-    ...student,
-    className: getClassName(student.classId)
-  }))
+  return studentsStore.students.map(student => {
+    const classe = classesStore.getClassById(student.classId)
+    return {
+      ...student,
+      className: classe ? classe.name : 'Non assigné',
+      niveau: classe ? classe.niveau : 'Non défini'
+    }
+  })
 })
 
-// Filtrage par recherche et classe
+// Classes filtrées par niveau pour le formulaire
+const classesByNiveau = computed(() => {
+  if (!selectedNiveauForm.value) return []
+  return classesStore.classes.filter(c => c.niveau === selectedNiveauForm.value)
+})
+
+// Classes filtrées pour le filtre
+const filteredClasses = computed(() => {
+  if (!selectedNiveauFilter.value) return classesStore.classes
+  return classesStore.classes.filter(c => c.niveau === selectedNiveauFilter.value)
+})
+
+// Filtrage par recherche, niveau et classe
 const filteredStudents = computed(() => {
   let students = studentsWithClassNames.value
+  
+  // Filtre par niveau
+  if (selectedNiveauFilter.value) {
+    students = students.filter(student => student.niveau === selectedNiveauFilter.value)
+  }
   
   // Filtre par classe
   if (selectedClassFilter.value) {
@@ -401,6 +447,9 @@ function getClassName(classId) {
 
 function editStudent(student) {
   editingStudent.value = student
+  const classe = classesStore.getClassById(student.classId)
+  selectedNiveauForm.value = classe?.niveau || ''
+  
   studentForm.value = {
     firstName: student.firstName,
     lastName: student.lastName,
@@ -408,8 +457,11 @@ function editStudent(student) {
     birthDate: student.birthDate,
     guardian: student.guardian,
     phone: student.phone,
+    address: student.address,
+    parentName: student.parentName,
+    parentPhone: student.parentPhone,
     classId: student.classId,
-    enrollmentStatus: student.enrollmentStatus || 'pending',
+    enrollmentStatus: student.enrollmentStatus || 'active',
     documents: student.documents || {
       birthCertificate: false,
       medicalCertificate: false,
@@ -554,7 +606,25 @@ function exportStudentsPDF() {
 
 function resetFilters() {
   selectedClassFilter.value = ''
+  selectedNiveauFilter.value = ''
   searchTerm.value = ''
+}
+
+function onNiveauChange() {
+  studentForm.value.classId = ''
+}
+
+function getExportLabel() {
+  if (selectedNiveauFilter.value && selectedClassFilter.value) {
+    const classe = classesStore.getClassById(parseInt(selectedClassFilter.value))
+    return `(${classe?.name})`
+  } else if (selectedNiveauFilter.value) {
+    return `(${selectedNiveauFilter.value})`
+  } else if (selectedClassFilter.value) {
+    const classe = classesStore.getClassById(parseInt(selectedClassFilter.value))
+    return `(${classe?.name})`
+  }
+  return '(Tous)'
 }
 </script>
 
