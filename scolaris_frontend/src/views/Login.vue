@@ -1,4 +1,12 @@
 <template>
+
+ <!-- Loading overlay après connexion -->
+  <LoadingSpinner 
+    :show="loadingData" 
+    title="Connexion réussie !" 
+    message="Chargement de vos données en cours..." 
+  />
+
   <div class="h-screen grid grid-cols-1 lg:grid-cols-2 animate-fade-in">
     
     <!-- Carte Gauche - Carrousel avec Logo -->
@@ -90,7 +98,7 @@
             Se connecter
           </button>
         </form>
-
+        
         <!-- <div class="mt-8 pt-6 border-t border-gray-200">
           <h3 class="text-sm font-medium text-gray-700 mb-3">Comptes de démonstration :</h3>
           <div class="space-y-2 text-sm">
@@ -117,6 +125,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -127,6 +136,7 @@ const credentials = ref({
 })
 
 const loading = ref(false)
+const loadingData = ref(false)
 const error = ref('')
 const currentImageIndex = ref(0)
 
@@ -147,10 +157,12 @@ onMounted(() => {
   if (authStore.isAuthenticated) {
     router.push('/')
   }
-  
+
   imageInterval = setInterval(() => {
     currentImageIndex.value = (currentImageIndex.value + 1) % backgroundImages.length
   }, 4000)
+  
+   
 })
 
 onUnmounted(() => {
@@ -163,18 +175,27 @@ async function handleLogin() {
   loading.value = true
   error.value = ''
 
-  try {
+ try {
     const success = authStore.login(credentials.value.username, credentials.value.password)
     
     if (success) {
-      router.push('/')
+      loading.value = false
+      loadingData.value = true // Démarrer le loading des données
+      
+      // Simuler le chargement des données (2-3 secondes)
+      setTimeout(() => {
+        loadingData.value = false
+        router.push('/')
+      }, 2500)
     } else {
       error.value = 'Nom d\'utilisateur ou mot de passe incorrect'
     }
   } catch (err) {
     error.value = 'Une erreur est survenue lors de la connexion'
   } finally {
-    loading.value = false
+    if (!loadingData.value) {
+      loading.value = false
+    }
   }
 }
 </script>
