@@ -29,11 +29,11 @@
               <select v-model="selectedSubjectId" class="input-field">
                 <option value="">Sélectionner une matière</option>
                 <option
-                  v-for="subject in subjectsStore.subjects"
+                  v-for="subject in availableSubjects"
                   :key="subject.id"
                   :value="subject.id"
                 >
-                  {{ subject.name }}
+                  {{ subject.name }} (Coeff: {{ subject.coefficient }})
                 </option>
               </select>
             </div>
@@ -273,6 +273,16 @@
             </template>
           </BaseTable>
         </div>
+        
+        <!-- Alert Modal -->
+        <AlertModal
+          :show="showAlert"
+          :type="alertConfig.type"
+          :title="alertConfig.title"
+          :message="alertConfig.message"
+          @close="closeAlert"
+          @confirm="confirmAlert"
+        />
       </main>
     </div>
   </div>
@@ -283,11 +293,13 @@ import { ref, computed, onMounted, watch } from 'vue'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import Header from '@/components/layout/Header.vue'
 import BaseTable from '@/components/common/BaseTable.vue'
+import AlertModal from '@/components/common/AlertModal.vue'
 import { useGradesStore } from '@/stores/grades'
 import { useStudentsStore } from '@/stores/students'
 import { useClassesStore } from '@/stores/classes'
 import { useSubjectsStore } from '@/stores/subjects'
 import { useAuthStore } from '@/stores/auth'
+import { useAlert } from '@/composables/useAlert'
 
 const sidebarCollapsed = ref(false)
 const gradesStore = useGradesStore()
@@ -295,6 +307,7 @@ const studentsStore = useStudentsStore()
 const classesStore = useClassesStore()
 const subjectsStore = useSubjectsStore()
 const authStore = useAuthStore()
+const { showAlert, alertConfig, showSuccess, showError, showConfirm, closeAlert, confirmAlert } = useAlert()
 
 const selectedClassId = ref('')
 const selectedSubjectId = ref('')
@@ -302,6 +315,7 @@ const selectedPeriod = ref('')
 // const selectedType = ref('Devoir')
 const studentGrades = ref({})
 const saving = ref(false)
+const subjectsWithCoefficients = ref([])
 
 onMounted(async () => {
   authStore.initAuth()
@@ -337,8 +351,13 @@ const selectedClassName = computed(() => {
 })
 
 const selectedSubjectName = computed(() => {
-  const subject = subjectsStore.getSubjectById(selectedSubjectId.value)
-  return subject ? subject.name : ''
+  const subject = availableSubjects.value.find(s => s.id == selectedSubjectId.value)
+  return subject ? `${subject.name} (Coeff: ${subject.coefficient})` : ''
+})
+
+const availableSubjects = computed(() => {
+  if (!selectedClassId.value) return []
+  return subjectsWithCoefficients.value
 })
 
 const classStudents = computed(() => {
@@ -406,6 +425,35 @@ const existingGrades = computed(() => {
     }
   })
 })
+
+// Charger les matières avec coefficients pour la classe sélectionnée
+async function loadSubjectsWithCoefficients() {
+  if (!selectedClassId.value) {
+    subjectsWithCoefficients.value = []
+    return
+  }
+  
+  try {
+    const response = await fetch(`http://localhost:3000/api/coefficients/subjects/class/${selectedClassId.value}`)
+    if (response.ok) {
+      subjectsWithCoefficients.value = await response.json()
+    } else {
+      // Fallback: utiliser toutes les matières avec coefficient 1
+      subjectsWithCoefficients.value = subjectsStore.subjects.map(s => ({
+        ...s,
+        coefficient: 1,
+        isActive: true
+      }))
+    }
+  } catch (error) {
+    console.error('Erreur chargement coefficients:', error)
+    subjectsWithCoefficients.value = subjectsStore.subjects.map(s => ({
+      ...s,
+      coefficient: 1,
+      isActive: true
+    }))
+  }
+}
 
 // Initialisation des notes à la sélection
 function loadStudents() {
@@ -486,7 +534,29 @@ function getSubjectName(subjectId) {
 }
 
 async function saveAllGrades() {
+  // Compter les notes à sauvegarder
+  let notesCount = 0
+  for (const [studentId, notes] of Object.entries(studentGrades.value)) {
+    notesCount += notes.interros.filter(n => n !== null && n !== undefined && n !== '').length
+    notesCount += notes.devoirs.filter(n => n !== null && n !== undefined && n !== '').length
+  }
+  
+  if (notesCount === 0) {
+    showError('Aucune note', 'Aucune note à enregistrer')
+    return
+  }
+  
+  showConfirm(
+    'Enregistrer les notes',
+    `Voulez-vous enregistrer ${notesCount} note(s) pour ${selectedSubjectName.value} - ${selectedPeriod.value} ?`,
+    () => confirmSaveGrades()
+  )
+}
+
+async function confirmSaveGrades() {
   saving.value = true
+  let savedCount = 0
+  let updatedCount = 0
   
   try {
     for (const [studentId, notes] of Object.entries(studentGrades.value)) {
@@ -508,6 +578,7 @@ async function saveAllGrades() {
           )
           if (existing) {
             await gradesStore.updateGrade(existing.id, { grade: parseFloat(grade) })
+            updatedCount++
           } else {
             await gradesStore.addGrade({
               studentId: numStudentId,
@@ -518,6 +589,7 @@ async function saveAllGrades() {
               type: 'Interro',
               index: idx
             })
+            savedCount++
           }
         }
       }
@@ -536,6 +608,7 @@ async function saveAllGrades() {
           )
           if (existing) {
             await gradesStore.updateGrade(existing.id, { grade: parseFloat(grade) })
+            updatedCount++
           } else {
             await gradesStore.addGrade({
               studentId: numStudentId,
@@ -546,14 +619,17 @@ async function saveAllGrades() {
               type: 'Devoir',
               index: idx
             })
+            savedCount++
           }
         }
       }
     }
-    alert('Notes enregistrées avec succès!')
+    
+    const message = `${savedCount} nouvelle(s) note(s) ajoutée(s) et ${updatedCount} note(s) mise(s) à jour`
+    showSuccess('Notes enregistrées', message)
   } catch (error) {
     console.error('Erreur lors de l\'enregistrement:', error)
-    alert('Erreur lors de l\'enregistrement des notes')
+    showError('Erreur', 'Erreur lors de l\'enregistrement des notes')
   } finally {
     saving.value = false
   }
@@ -571,6 +647,11 @@ function deleteGrade(grade) {
     gradesStore.deleteGrade(grade.id)
   }
 }
+
+watch(selectedClassId, async () => {
+  selectedSubjectId.value = ''
+  await loadSubjectsWithCoefficients()
+})
 
 watch([selectedClassId, selectedSubjectId, selectedPeriod], async () => {
   if (canShowGradesTable.value) {

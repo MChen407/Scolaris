@@ -180,3 +180,48 @@ export const getFeeTypes = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+export const getTeacherPaymentHistory = async (req, res) => {
+    try {
+        const { teacherId } = req.params;
+        const payments = await TeacherPayment.findAll({
+            where: { teacherId },
+            include: [{ model: Teacher, attributes: ['firstName', 'lastName'] }],
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(payments);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getTeacherStats = async (req, res) => {
+    try {
+        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+        
+        const allPayments = await TeacherPayment.findAll({
+            include: [{ model: Teacher, attributes: ['firstName', 'lastName'] }]
+        });
+        
+        const monthlyPayments = allPayments.filter(p => 
+            p.date && p.date.startsWith(currentMonth)
+        );
+        
+        const paidTeachers = new Set(monthlyPayments.map(p => p.teacherId));
+        const totalTeachers = await Teacher.count();
+        
+        const stats = {
+            totalTeachers,
+            paidTeachersCount: paidTeachers.size,
+            unpaidTeachersCount: totalTeachers - paidTeachers.size,
+            totalPayments: allPayments.length,
+            monthlyPayments: monthlyPayments.length,
+            totalAmount: allPayments.reduce((sum, p) => sum + parseFloat(p.total || 0), 0),
+            monthlyAmount: monthlyPayments.reduce((sum, p) => sum + parseFloat(p.total || 0), 0)
+        };
+        
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

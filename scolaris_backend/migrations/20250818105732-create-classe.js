@@ -19,7 +19,7 @@ module.exports = {
       },
       section: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
       },
       capacity: {
         type: Sequelize.INTEGER,

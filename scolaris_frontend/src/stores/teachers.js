@@ -1,13 +1,18 @@
 import {  defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import axios from 'axios'
 
 export const useTeachersStore = defineStore('teachers', () => {
   const teachers = ref([])
 
-  async function fetchTeachers(){
-    const res = await axios.get('http://localhost:3000/api/teachers')
-    teachers.value = res.data
+  async function fetchTeachers(niveau = null){
+    try {
+      const url = niveau ? `/api/teachers?niveau=${niveau}` : '/api/teachers'
+      const res = await axios.get(`http://localhost:3000${url}`)
+      teachers.value = res.data
+    } catch (error) {
+      console.error('Erreur:', error)
+    }
   }
 
   async function addTeacher(teacherData) {
@@ -32,8 +37,16 @@ export const useTeachersStore = defineStore('teachers', () => {
     return teachers.value.find(t => t.id === id)
   }
 
+  const teachersByNiveau = computed(() => {
+    return {
+      Primaire: teachers.value.filter(t => t.niveau === 'Primaire'),
+      Secondaire: teachers.value.filter(t => t.niveau === 'Secondaire')
+    }
+  })
+
   return {
     teachers,
+    teachersByNiveau,
     addTeacher,
     fetchTeachers,
     updateTeacher,
