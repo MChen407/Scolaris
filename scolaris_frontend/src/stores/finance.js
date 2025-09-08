@@ -41,12 +41,14 @@ export const useFinanceStore = defineStore('finance', () => {
   }
 
   async function fetchFeeTypes() {
-    try {
+        try {
       const res = await axios.get('http://localhost:3000/api/finance/fee-types')
-      feeTypes.value = res.data
+      feeTypes.value = res.data || []
       console.log('FeeTypes fetched:', res.data)
+      return feeTypes.value
     } catch (error) {
       console.error('Error fetching fee types:', error)
+      throw error
     }
   }
 
