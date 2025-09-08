@@ -146,13 +146,14 @@
               <div :class="getHeaderClass()" class="text-white p-6">
                 <div class="flex items-center justify-between">
                   <div class="flex-shrink-0 w-20">
-                    <img v-if="customization.leftLogoUrl" :src="customization.leftLogoUrl" alt="Logo gauche" class="h-16 w-16 rounded-full border-2 border-white mx-auto">
+                    <img v-if="schoolStore.schoolInfo.logo" :src="schoolStore.schoolInfo.logo" alt="Logo école" class="h-16 w-16 rounded-full border-2 border-white mx-auto">
                   </div>
                   <div class="text-center flex-1 px-4">
-                    <h1 class="text-2xl font-bold mb-1">{{ customization.schoolName || 'ÉTABLISSEMENT SCOLAIRE' }}</h1>
+                    <h1 class="text-2xl font-bold mb-1">{{ schoolStore.schoolInfo.name || 'ÉTABLISSEMENT SCOLAIRE' }}</h1>
                     <p class="text-lg font-semibold opacity-90">BULLETIN DE NOTES DU {{ selectedPeriod.toUpperCase() }}</p>
                     <p class="text-sm opacity-80">Année Scolaire {{ customization.schoolYear }}</p>
-                    <p v-if="customization.additionalText" class="text-sm opacity-75 mt-1">{{ customization.additionalText }}</p>
+                    <p v-if="schoolStore.schoolInfo.address" class="text-sm opacity-75 mt-1">{{ schoolStore.schoolInfo.address }}</p>
+                    <p v-if="schoolStore.schoolInfo.phone" class="text-sm opacity-75">Tél: {{ schoolStore.schoolInfo.phone }}</p>
                   </div>
                   <div class="flex-shrink-0 w-20">
                     <img v-if="customization.rightLogoUrl" :src="customization.rightLogoUrl" alt="Logo droite" class="h-16 w-16 rounded-full border-2 border-white mx-auto">
@@ -520,6 +521,7 @@ import { useStudentsStore } from '@/stores/students'
 import { useClassesStore } from '@/stores/classes'
 import { useSubjectsStore } from '@/stores/subjects'
 import { useAuthStore } from '@/stores/auth'
+import { useSchoolStore } from '@/stores/school'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
@@ -529,6 +531,7 @@ const studentsStore = useStudentsStore()
 const classesStore = useClassesStore()
 const subjectsStore = useSubjectsStore()
 const authStore = useAuthStore()
+const schoolStore = useSchoolStore()
 
 const selectedClassId = ref('')
 const selectedPeriod = ref('')
@@ -566,8 +569,12 @@ function handleRightLogoUpload(event) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   authStore.initAuth()
+  await schoolStore.fetchSchoolInfo()
+  // Utiliser les données du profil pour la personnalisation
+  customization.value.schoolName = schoolStore.schoolInfo.name || 'ÉTABLISSEMENT SCOLAIRE'
+  customization.value.leftLogoUrl = schoolStore.schoolInfo.logo || ''
 })
 
 async function generateReports() {

@@ -32,9 +32,6 @@
               @click.away="showUserMenu = false"
             >
               <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                <i class="fas fa-user mr-2"></i> Profil
-              </a>
-              <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                 <i class="fas fa-cog mr-2"></i> Paramètres
               </a>
               <hr class="my-2">
@@ -72,7 +69,8 @@ const pageTitle = computed(() => {
     '/grades': 'Saisie des notes',
     '/reports': 'Bulletins scolaires',
     '/finance': 'Gestion financière',
-    '/statistics': 'Statistiques'
+    '/statistics': 'Statistiques',
+    '/profile': 'Profil de l\'établissement'
   }
   return titles[route.path] || 'Page'
 })
@@ -87,7 +85,8 @@ const pageDescription = computed(() => {
     '/grades': 'Enregistrer et modifier les notes',
     '/reports': 'Générer et consulter les bulletins',
     '/finance': 'Suivi des paiements et finances',
-    '/statistics': 'Analyses et rapports statistiques'
+    '/statistics': 'Analyses et rapports statistiques',
+    '/profile': 'Configurer les informations de l\'établissement'
   }
   return descriptions[route.path] || ''
 })

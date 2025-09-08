@@ -320,6 +320,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useStudentsStore } from '@/stores/students'
 import { useClassesStore } from '@/stores/classes'
 import { useAuthStore } from '@/stores/auth'
+import { useSchoolStore } from '@/stores/school'
 import { usePDFExport } from '@/composables/usePDFExport'
 import { useAlert } from '@/composables/useAlert'
 
@@ -327,6 +328,7 @@ const sidebarCollapsed = ref(false)
 const studentsStore = useStudentsStore()
 const classesStore = useClassesStore()
 const authStore = useAuthStore()
+const schoolStore = useSchoolStore()
 const { isExporting, exportToPDF } = usePDFExport()
 const { showAlert, alertConfig, showSuccess, showError, showConfirm, closeAlert, confirmAlert } = useAlert()
 
@@ -368,6 +370,7 @@ onMounted(async () => {
     await authStore.initAuth()
     await studentsStore.fetchStudents()
     await classesStore.fetchClasses()
+    await schoolStore.fetchSchoolInfo()
   } finally {
     // Simuler un délai pour montrer l'animation
     setTimeout(() => {
@@ -596,11 +599,21 @@ function exportStudentsPDF() {
   const title = className ? `LISTE DES ELEVES - ${className}` : 'LISTE DES ELEVES'
   const filename = className ? `liste_eleves_${className.toLowerCase().replace(/\s+/g, '_')}` : 'liste_eleves'
   
+  // Utiliser les données du profil de l'école
+  const schoolInfo = {
+    name: schoolStore.schoolInfo.name || 'ÉTABLISSEMENT SCOLAIRE',
+    address: schoolStore.schoolInfo.address || '',
+    phone: schoolStore.schoolInfo.phone || '',
+    email: schoolStore.schoolInfo.email || '',
+    logo: schoolStore.schoolInfo.logo || ''
+  }
+  
   exportToPDF(
     filteredStudents.value,
     title,
     pdfColumns,
-    filename
+    filename,
+    schoolInfo
   )
 }
 
