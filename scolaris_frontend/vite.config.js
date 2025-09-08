@@ -15,6 +15,17 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['vue', 'vue-router', 'pinia'],
+          charts: ['chart.js'],
+          utils: ['axios']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000
   }
 })
